@@ -8,6 +8,16 @@
       <url>https://blog.toko.moe/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E</url>
       <link>https://blog.toko.moe/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E</link>
     </image>
-    <generator>Hugo -- gohugo.io</generator><atom:link href="https://blog.toko.moe/categories/index.xml" rel="self" type="application/rss+xml" />
+    <generator>Hugo -- gohugo.io</generator>
+    <lastBuildDate>Sat, 31 Oct 2020 10:03:02 +0800</lastBuildDate><atom:link href="https://blog.toko.moe/categories/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>rust</title>
+      <link>https://blog.toko.moe/categories/rust/</link>
+      <pubDate>Sat, 31 Oct 2020 10:03:02 +0800</pubDate>
+      
+      <guid>https://blog.toko.moe/categories/rust/</guid>
+      <description></description>
+    </item>
+    
   </channel>
 </rss>

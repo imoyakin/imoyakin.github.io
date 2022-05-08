@@ -3,9 +3,27 @@
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://blog.toko.moe/categories/</loc>
+    <lastmod>2020-10-31T10:03:02+08:00</lastmod>
+  </url><url>
+    <loc>https://blog.toko.moe/posts/</loc>
+    <lastmod>2020-10-31T10:03:02+08:00</lastmod>
+  </url><url>
+    <loc>https://blog.toko.moe/tags/rust/</loc>
+    <lastmod>2020-10-31T10:03:02+08:00</lastmod>
+  </url><url>
+    <loc>https://blog.toko.moe/categories/rust/</loc>
+    <lastmod>2020-10-31T10:03:02+08:00</lastmod>
+  </url><url>
+    <loc>https://blog.toko.moe/posts/rust-pin-unpin/</loc>
+    <lastmod>2020-10-31T10:03:02+08:00</lastmod>
+  </url><url>
+    <loc>https://blog.toko.moe/tags/smart-pointer/</loc>
+    <lastmod>2020-10-31T10:03:02+08:00</lastmod>
   </url><url>
     <loc>https://blog.toko.moe/tags/</loc>
+    <lastmod>2020-10-31T10:03:02+08:00</lastmod>
   </url><url>
     <loc>https://blog.toko.moe/</loc>
+    <lastmod>2020-10-31T10:03:02+08:00</lastmod>
   </url>
 </urlset>
