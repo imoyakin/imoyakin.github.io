@@ -1,6 +1,6 @@
 [submodule "public"]
 	path = public
-	url = ./public
+	url = https://github.com/imoyakin/imoyakin.github.io
 [submodule "themes/PaperMod"]
 	path = themes/PaperMod
 	url = https://github.com/adityatelange/hugo-PaperMod
