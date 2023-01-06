@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+  xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://blog.toko.moe/posts/</loc>
+    <lastmod>2022-12-28T11:21:05+08:00</lastmod>
+  </url><url>
+    <loc>https://blog.toko.moe/posts/telepresence%E8%B8%A9%E5%9D%91/</loc>
+    <lastmod>2022-12-28T11:21:05+08:00</lastmod>
+  </url><url>
+    <loc>https://blog.toko.moe/</loc>
+    <lastmod>2022-12-28T11:21:05+08:00</lastmod>
+  </url><url>
+    <loc>https://blog.toko.moe/categories/</loc>
+    <lastmod>2020-10-31T10:03:02+08:00</lastmod>
+  </url><url>
+    <loc>https://blog.toko.moe/tags/rust/</loc>
+    <lastmod>2020-10-31T10:03:02+08:00</lastmod>
+  </url><url>
+    <loc>https://blog.toko.moe/categories/rust/</loc>
+    <lastmod>2020-10-31T10:03:02+08:00</lastmod>
+  </url><url>
+    <loc>https://blog.toko.moe/posts/rust-pin-unpin/</loc>
+    <lastmod>2020-10-31T10:03:02+08:00</lastmod>
+  </url><url>
+    <loc>https://blog.toko.moe/tags/smart-pointer/</loc>
+    <lastmod>2020-10-31T10:03:02+08:00</lastmod>
+  </url><url>
+    <loc>https://blog.toko.moe/tags/</loc>
+    <lastmod>2020-10-31T10:03:02+08:00</lastmod>
+  </url>
+</urlset>

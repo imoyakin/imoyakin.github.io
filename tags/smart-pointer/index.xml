@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>smart pointer on 笔记</title>
+    <link>https://blog.toko.moe/tags/smart-pointer/</link>
+    <description>Recent content in smart pointer on 笔记</description>
+    <image>
+      <url>https://blog.toko.moe/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E</url>
+      <link>https://blog.toko.moe/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E</link>
+    </image>
+    <generator>Hugo -- gohugo.io</generator>
+    <lastBuildDate>Sat, 31 Oct 2020 10:03:02 +0800</lastBuildDate><atom:link href="https://blog.toko.moe/tags/smart-pointer/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Rust Pin Unpin</title>
+      <link>https://blog.toko.moe/posts/rust-pin-unpin/</link>
+      <pubDate>Sat, 31 Oct 2020 10:03:02 +0800</pubDate>
+      
+      <guid>https://blog.toko.moe/posts/rust-pin-unpin/</guid>
+      <description>rust的Pin指针 pin指针是一个在销毁前永远不会移动的指针。配合该指针可以更让结构体中包含指向它自己内存的指针&amp;ndash;因为移动了后结构体中的这个指针就会变成悬垂引用，这就与rust安全的设计相冲突。也就是说，声明pin指针就是创建一个在生命周期结束前不会被移动的内存。
+为什么需要Pin指针 rfc中明确的概念是，提了一个使用futures(async/await)的例子：正在poll的future结构体，希望其能保存指向自己的引用。事实上我并没有明白其想表达的意思，但结合其他博文, 大致明白了需求的具体背景情形。
+ 实现async/await函数时，由于需要记录当前所处的状态(每次await的时候都会导致一个状态)，所以编译器往往生成的是一个匿名的enum，每个enum变体保存从外部或者之前的await点捕获的变量。
+ 在这篇文章的例子中，提到了await前的会被从stack中清理，await后能调用到被清理的数据是因为这些数据保存在了编译器生成的匿名enum，其充当了虚拟栈。如果await前有一个变量v，再有一个引用变量v的rv，那么这俩都会保存在这个匿名enum中，即这个enum发生了自引用的情景，也是pin指针要发挥作用的情景。
+题外？为什么是pin指针？ rfc中提到了解决自引用的另外有趣的办法。他们想设计一个名为move或?move的trait，只有实现这个trait的类型才有搬家的权力或者被禁止搬家。但是他们认为会带来使得一些API无法向后兼容的改变，或者或者因为过于灵活带来隐患。但这些个人认为或许在语言发展到一定程度后才能看出那个更优，而现在则感觉rust会加入太多的指针（丢人的表示写了后面忘了前面，预定一个指针总结笔记）,所以毒奶一口会在rust2中回归（x
+参考资料:
+ Pin概念解析 rust rfc 2349 The Why, What, and How of Pinning in Rust //需要复习  </description>
+    </item>
+    
+  </channel>
+</rss>
