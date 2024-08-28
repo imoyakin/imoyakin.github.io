@@ -2,20 +2,20 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
     <title>Posts on 笔记</title>
-    <link>https://blog.toko.moe/posts/</link>
+    <link>https://blog.explosion.zip/posts/</link>
     <description>Recent content in Posts on 笔记</description>
     <image>
-      <url>https://blog.toko.moe/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E</url>
-      <link>https://blog.toko.moe/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E</link>
+      <url>https://blog.explosion.zip/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E</url>
+      <link>https://blog.explosion.zip/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E</link>
     </image>
     <generator>Hugo -- gohugo.io</generator>
-    <lastBuildDate>Wed, 28 Dec 2022 11:21:05 +0800</lastBuildDate><atom:link href="https://blog.toko.moe/posts/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Wed, 28 Dec 2022 11:21:05 +0800</lastBuildDate><atom:link href="https://blog.explosion.zip/posts/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Telepresence踩坑</title>
-      <link>https://blog.toko.moe/posts/telepresence%E8%B8%A9%E5%9D%91/</link>
+      <link>https://blog.explosion.zip/posts/telepresence%E8%B8%A9%E5%9D%91/</link>
       <pubDate>Wed, 28 Dec 2022 11:21:05 +0800</pubDate>
       
-      <guid>https://blog.toko.moe/posts/telepresence%E8%B8%A9%E5%9D%91/</guid>
+      <guid>https://blog.explosion.zip/posts/telepresence%E8%B8%A9%E5%9D%91/</guid>
       <description>telepresence 踩坑 telepresence 用法  k8s pod IP 由 CNI 分配, 通信是走 overlay 网络, 容器之间的通信都是基于cluser IP.[1]
  k8s的软件调试出了名的难搞,如果遇到日志设计不合理/不熟悉的代码,能打断点总是.没错,这就是我使用telepresence点初衷&amp;ndash; telepresence可以让本机接入k8s的overlay网络的同时,通过sidecar的方式拦截具体pod的流量转发到执行intercept的本地环境.
 troublneshooting  无法建立和k8s内容器的链接/dns解析容器内部域名·失败
@@ -26,10 +26,10 @@ troublneshooting  无法建立和k8s内容器的链接/dns解析容器内部域�
     
     <item>
       <title>Rust Pin Unpin</title>
-      <link>https://blog.toko.moe/posts/rust-pin-unpin/</link>
+      <link>https://blog.explosion.zip/posts/rust-pin-unpin/</link>
       <pubDate>Sat, 31 Oct 2020 10:03:02 +0800</pubDate>
       
-      <guid>https://blog.toko.moe/posts/rust-pin-unpin/</guid>
+      <guid>https://blog.explosion.zip/posts/rust-pin-unpin/</guid>
       <description>rust的Pin指针 pin指针是一个在销毁前永远不会移动的指针。配合该指针可以更让结构体中包含指向它自己内存的指针&amp;ndash;因为移动了后结构体中的这个指针就会变成悬垂引用，这就与rust安全的设计相冲突。也就是说，声明pin指针就是创建一个在生命周期结束前不会被移动的内存。
 为什么需要Pin指针 rfc中明确的概念是，提了一个使用futures(async/await)的例子：正在poll的future结构体，希望其能保存指向自己的引用。事实上我并没有明白其想表达的意思，但结合其他博文, 大致明白了需求的具体背景情形。
  实现async/await函数时，由于需要记录当前所处的状态(每次await的时候都会导致一个状态)，所以编译器往往生成的是一个匿名的enum，每个enum变体保存从外部或者之前的await点捕获的变量。
@@ -41,20 +41,31 @@ troublneshooting  无法建立和k8s内容器的链接/dns解析容器内部域�
     
     <item>
       <title></title>
-      <link>https://blog.toko.moe/posts/clash/</link>
+      <link>https://blog.explosion.zip/posts/clash/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://blog.toko.moe/posts/clash/</guid>
+      <guid>https://blog.explosion.zip/posts/clash/</guid>
       <description>route add default gw 192.168.1.105 ens192</description>
     </item>
     
     <item>
       <title></title>
-      <link>https://blog.toko.moe/posts/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0%E7%BB%BC%E8%BF%B0/</link>
+      <link>https://blog.explosion.zip/posts/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0%E7%BB%BC%E8%BF%B0/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://blog.toko.moe/posts/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0%E7%BB%BC%E8%BF%B0/</guid>
+      <guid>https://blog.explosion.zip/posts/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0%E7%BB%BC%E8%BF%B0/</guid>
       <description></description>
+    </item>
+    
+    <item>
+      <title>APFS开启透明压缩</title>
+      <link>https://blog.explosion.zip/posts/apfs%E5%BC%80%E5%90%AF%E9%80%8F%E6%98%8E%E5%8E%8B%E7%BC%A9/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://blog.explosion.zip/posts/apfs%E5%BC%80%E5%90%AF%E9%80%8F%E6%98%8E%E5%8E%8B%E7%BC%A9/</guid>
+      <description>brew install afsctool afsctool -c -j8 **** #要压缩的目录 j是开启几个线程,m系列乞丐u就是4大4小,所以选了8. 我压缩的用户空间,主要是代码,干掉了10个g.
+https://apple.stackexchange.com/questions/360120/apfs-how-do-i-enable-transparent-compression
+感谢土豆!</description>
     </item>
     
   </channel>

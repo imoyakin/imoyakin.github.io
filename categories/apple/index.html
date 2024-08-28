@@ -3,11 +3,11 @@
 <meta http-equiv=x-ua-compatible content="IE=edge">
 <meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no">
 <meta name=robots content="index, follow">
-<title>smart pointer | 笔记</title>
+<title>apple | 笔记</title>
 <meta name=keywords content>
 <meta name=description content="ExampleSite description">
 <meta name=author content="Me">
-<link rel=canonical href=https://blog.explosion.zip/tags/smart-pointer/>
+<link rel=canonical href=https://blog.explosion.zip/categories/apple/>
 <meta name=google-site-verification content="XYZabc">
 <meta name=yandex-verification content="XYZabc">
 <meta name=msvalidate.01 content="XYZabc">
@@ -19,17 +19,17 @@
 <link rel=mask-icon href=https://blog.explosion.zip/%3Clink%20/%20abs%20url%3E>
 <meta name=theme-color content="#2e2e33">
 <meta name=msapplication-TileColor content="#2e2e33">
-<link rel=alternate type=application/rss+xml href=https://blog.explosion.zip/tags/smart-pointer/index.xml>
+<link rel=alternate type=application/rss+xml href=https://blog.explosion.zip/categories/apple/index.xml>
 <noscript>
 <style>#theme-toggle,.top-link{display:none}</style>
 <style>@media(prefers-color-scheme:dark){:root{--theme:rgb(29, 30, 32);--entry:rgb(46, 46, 51);--primary:rgb(218, 218, 219);--secondary:rgb(155, 156, 157);--tertiary:rgb(65, 66, 68);--content:rgb(196, 196, 197);--hljs-bg:rgb(46, 46, 51);--code-bg:rgb(55, 56, 62);--border:rgb(51, 51, 51)}.list{background:var(--theme)}.list:not(.dark)::-webkit-scrollbar-track{background:0 0}.list:not(.dark)::-webkit-scrollbar-thumb{border-color:var(--theme)}}</style>
-</noscript><meta property="og:title" content="smart pointer">
+</noscript><meta property="og:title" content="apple">
 <meta property="og:description" content="ExampleSite description">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://blog.explosion.zip/tags/smart-pointer/"><meta property="og:image" content="https://blog.explosion.zip/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E"><meta property="og:site_name" content="ExampleSite">
+<meta property="og:url" content="https://blog.explosion.zip/categories/apple/"><meta property="og:image" content="https://blog.explosion.zip/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E"><meta property="og:site_name" content="ExampleSite">
 <meta name=twitter:card content="summary_large_image">
 <meta name=twitter:image content="https://blog.explosion.zip/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E">
-<meta name=twitter:title content="smart pointer">
+<meta name=twitter:title content="apple">
 <meta name=twitter:description content="ExampleSite description">
 </head>
 <body class=list id=top>
@@ -58,27 +58,23 @@
 </nav>
 </header>
 <main class=main>
-<header class=page-header><div class=breadcrumbs><a href=https://blog.explosion.zip/>Home</a>&nbsp;»&nbsp;<a href=https://blog.explosion.zip/tags/>Tags</a></div>
+<header class=page-header><div class=breadcrumbs><a href=https://blog.explosion.zip/>Home</a>&nbsp;»&nbsp;<a href=https://blog.explosion.zip/categories/>Categories</a></div>
 <h1>
-smart pointer
+apple
 </h1>
 </header>
 <article class="post-entry tag-entry">
 <header class=entry-header>
-<h2>Rust Pin Unpin
+<h2>APFS开启透明压缩
 </h2>
 </header>
 <div class=entry-content>
-<p>rust的Pin指针 pin指针是一个在销毁前永远不会移动的指针。配合该指针可以更让结构体中包含指向它自己内存的指针–因为移动了后结构体中的这个指针就会变成悬垂引用，这就与rust安全的设计相冲突。也就是说，声明pin指针就是创建一个在生命周期结束前不会被移动的内存。
-为什么需要Pin指针 rfc中明确的概念是，提了一个使用futures(async/await)的例子：正在poll的future结构体，希望其能保存指向自己的引用。事实上我并没有明白其想表达的意思，但结合其他博文, 大致明白了需求的具体背景情形。
-实现async/await函数时，由于需要记录当前所处的状态(每次await的时候都会导致一个状态)，所以编译器往往生成的是一个匿名的enum，每个enum变体保存从外部或者之前的await点捕获的变量。
-在这篇文章的例子中，提到了await前的会被从stack中清理，await后能调用到被清理的数据是因为这些数据保存在了编译器生成的匿名enum，其充当了虚拟栈。如果await前有一个变量v，再有一个引用变量v的rv，那么这俩都会保存在这个匿名enum中，即这个enum发生了自引用的情景，也是pin指针要发挥作用的情景。
-题外？为什么是pin指针？ rfc中提到了解决自引用的另外有趣的办法。他们想设计一个名为move或?move的trait，只有实现这个trait的类型才有搬家的权力或者被禁止搬家。但是他们认为会带来使得一些API无法向后兼容的改变，或者或者因为过于灵活带来隐患。但这些个人认为或许在语言发展到一定程度后才能看出那个更优，而现在则感觉rust会加入太多的指针（丢人的表示写了后面忘了前面，预定一个指针总结笔记）,所以毒奶一口会在rust2中回归（x
-参考资料:
-Pin概念解析 rust rfc 2349 The Why, What, and How of Pinning in Rust //需要复习 </p>
+<p>brew install afsctool afsctool -c -j8 **** #要压缩的目录 j是开启几个线程,m系列乞丐u就是4大4小,所以选了8. 我压缩的用户空间,主要是代码,干掉了10个g.
+https://apple.stackexchange.com/questions/360120/apfs-how-do-i-enable-transparent-compression
+感谢土豆!</p>
 </div>
-<footer class=entry-footer><span title="2020-10-31 10:03:02 +0800 +0800">October 31, 2020</span>&nbsp;·&nbsp;1 min&nbsp;·&nbsp;Me</footer>
-<a class=entry-link aria-label="post link to Rust Pin Unpin" href=https://blog.explosion.zip/posts/rust-pin-unpin/></a>
+<footer class=entry-footer>1 min&nbsp;·&nbsp;Me</footer>
+<a class=entry-link aria-label="post link to APFS开启透明压缩" href=https://blog.explosion.zip/posts/apfs%E5%BC%80%E5%90%AF%E9%80%8F%E6%98%8E%E5%8E%8B%E7%BC%A9/></a>
 </article>
 </main>
 <footer class=footer>

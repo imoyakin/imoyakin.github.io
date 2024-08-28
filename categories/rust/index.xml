@@ -2,20 +2,20 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
     <title>rust on 笔记</title>
-    <link>https://blog.toko.moe/categories/rust/</link>
+    <link>https://blog.explosion.zip/categories/rust/</link>
     <description>Recent content in rust on 笔记</description>
     <image>
-      <url>https://blog.toko.moe/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E</url>
-      <link>https://blog.toko.moe/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E</link>
+      <url>https://blog.explosion.zip/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E</url>
+      <link>https://blog.explosion.zip/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E</link>
     </image>
     <generator>Hugo -- gohugo.io</generator>
-    <lastBuildDate>Sat, 31 Oct 2020 10:03:02 +0800</lastBuildDate><atom:link href="https://blog.toko.moe/categories/rust/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Sat, 31 Oct 2020 10:03:02 +0800</lastBuildDate><atom:link href="https://blog.explosion.zip/categories/rust/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Rust Pin Unpin</title>
-      <link>https://blog.toko.moe/posts/rust-pin-unpin/</link>
+      <link>https://blog.explosion.zip/posts/rust-pin-unpin/</link>
       <pubDate>Sat, 31 Oct 2020 10:03:02 +0800</pubDate>
       
-      <guid>https://blog.toko.moe/posts/rust-pin-unpin/</guid>
+      <guid>https://blog.explosion.zip/posts/rust-pin-unpin/</guid>
       <description>rust的Pin指针 pin指针是一个在销毁前永远不会移动的指针。配合该指针可以更让结构体中包含指向它自己内存的指针&amp;ndash;因为移动了后结构体中的这个指针就会变成悬垂引用，这就与rust安全的设计相冲突。也就是说，声明pin指针就是创建一个在生命周期结束前不会被移动的内存。
 为什么需要Pin指针 rfc中明确的概念是，提了一个使用futures(async/await)的例子：正在poll的future结构体，希望其能保存指向自己的引用。事实上我并没有明白其想表达的意思，但结合其他博文, 大致明白了需求的具体背景情形。
  实现async/await函数时，由于需要记录当前所处的状态(每次await的时候都会导致一个状态)，所以编译器往往生成的是一个匿名的enum，每个enum变体保存从外部或者之前的await点捕获的变量。

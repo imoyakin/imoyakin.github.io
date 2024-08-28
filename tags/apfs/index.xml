@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>APFS on 笔记</title>
+    <link>https://blog.explosion.zip/tags/apfs/</link>
+    <description>Recent content in APFS on 笔记</description>
+    <image>
+      <url>https://blog.explosion.zip/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E</url>
+      <link>https://blog.explosion.zip/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E</link>
+    </image>
+    <generator>Hugo -- gohugo.io</generator><atom:link href="https://blog.explosion.zip/tags/apfs/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>APFS开启透明压缩</title>
+      <link>https://blog.explosion.zip/posts/apfs%E5%BC%80%E5%90%AF%E9%80%8F%E6%98%8E%E5%8E%8B%E7%BC%A9/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://blog.explosion.zip/posts/apfs%E5%BC%80%E5%90%AF%E9%80%8F%E6%98%8E%E5%8E%8B%E7%BC%A9/</guid>
+      <description>brew install afsctool afsctool -c -j8 **** #要压缩的目录 j是开启几个线程,m系列乞丐u就是4大4小,所以选了8. 我压缩的用户空间,主要是代码,干掉了10个g.
+https://apple.stackexchange.com/questions/360120/apfs-how-do-i-enable-transparent-compression
+感谢土豆!</description>
+    </item>
+    
+  </channel>
+</rss>
