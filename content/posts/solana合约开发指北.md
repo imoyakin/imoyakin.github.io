@@ -1,7 +1,7 @@
 ---
 title: "Solana合约开发指北"
 date: 2022-08-30T13:22:27+08:00
-draft: true
+draft: false
 ---
 
 # Solana合约开发指北
