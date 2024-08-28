@@ -25,6 +25,26 @@ troublneshooting  无法建立和k8s内容器的链接/dns解析容器内部域�
     </item>
     
     <item>
+      <title>Solana合约开发指北</title>
+      <link>https://blog.explosion.zip/posts/solana%E5%90%88%E7%BA%A6%E5%BC%80%E5%8F%91%E6%8C%87%E5%8C%97/</link>
+      <pubDate>Tue, 30 Aug 2022 13:22:27 +0800</pubDate>
+      
+      <guid>https://blog.explosion.zip/posts/solana%E5%90%88%E7%BA%A6%E5%BC%80%E5%8F%91%E6%8C%87%E5%8C%97/</guid>
+      <description>Solana合约开发指北 这里假定solana需要的开发环境: rust/node.js甚至Solana客户端都已经装好了.
+合约是什么?简单来说,就是在提供多个函数rpc调用后,用户输入符合特定需求的结构体数据后,获得预期的结果或者符合规则的错误.同时提供在可接受的复杂度范围内,存储少量有关用户的元数据.
+ On Solana, smart contracts are called programs
+ 首先,先确定solana的相关术语.为了符合官方的称谓,solana上的智能合约都被称作programs而非smart contracts.
+随后,我们预想一个智能能合约案例,来展开描述在solana上开发智能合约要处理哪些细节.
+Example Escrow Alice持有token X, Bob持有token Y,他们互相之间达成了交易约定: Alice 支付100X,和Bob手里50Y进行兑换.和我们购物使用淘宝一样,Alice和Bob都害怕交钱不发,所以需要一个能充当支付宝的智能合作作为一个可信赖的第三方托管,这就是我们案例: Escrow.
+直观的去想,让Alice发起交易的时候转账给合约就行,让Bob后续去找合约拿钱.但这是传统支付宝的做法:支付宝拥有一个巨大的数据库,可以通过键值的方式记录下不同数以亿计的用户的交易对.在solana上,智能合约的数据存储是通过account来实现的,而每一个account最多只能提供32KB的数据存储,无法存储跟合约无关的用户数据.
+solana并不是没有预见到这点,其提供的PDA(程序委托账户)能代我们做到记录无限的数据账户&amp;ndash;当用户与合约交易时,为其生成专属的account来存储交易细节.当Alice和智能合约互动的时候, 智能合约通过确定的种子生成一个PDA账户来处理这笔交易.
+graph LR: Alice -&amp;gt; 让我们展开,一点点的捋下实现细节.
+Setting up the project 我们可以参照这个案例创建一个rust的项目,我们修改Cargo.toml,让其知道我们需要的依赖和编译结果产出.
+[package] name = &amp;#34;solana-escrow&amp;#34; version = &amp;#34;0.1.0&amp;#34; edition = &amp;#34;2021&amp;#34; license = &amp;#34;WTFPL&amp;#34; publish = false [dependencies] solana-program = &amp;#34;1.9.4&amp;#34; [lib] crate-type = [&amp;#34;cdylib&amp;#34;, &amp;#34;lib&amp;#34;] entrypoint.rs, program, and accounts 现在我们已经在着手编写这个智能合约了!如我们所见,最后编译成eBPF的程序,入口处在lib.rs中,我们通过use来引入任何被导入的函数,通过entrypoint!这个宏来定义process_instruction函数.这是唯一调用智能合约的方法,所有的合约调用都是通过entrypoint来触发.
+ 被调用的时候, program被传递给BPF Loader.</description>
+    </item>
+    
+    <item>
       <title>Rust Pin Unpin</title>
       <link>https://blog.explosion.zip/posts/rust-pin-unpin/</link>
       <pubDate>Sat, 31 Oct 2020 10:03:02 +0800</pubDate>

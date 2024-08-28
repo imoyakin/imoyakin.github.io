@@ -1,0 +1,492 @@
+<!doctype html><html lang=en dir=auto>
+<head><meta charset=utf-8>
+<meta http-equiv=x-ua-compatible content="IE=edge">
+<meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no">
+<meta name=robots content="index, follow">
+<title>Solana合约开发指北 | 笔记</title>
+<meta name=keywords content>
+<meta name=description content="Solana合约开发指北 这里假定solana需要的开发环境: rust/node.js甚至Solana客户端都已经装好了.
+合约是什么?简单来说,就是在提供多个函数rpc调用后,用户输入符合特定需求的结构体数据后,获得预期的结果或者符合规则的错误.同时提供在可接受的复杂度范围内,存储少量有关用户的元数据.
+ On Solana, smart contracts are called programs
+ 首先,先确定solana的相关术语.为了符合官方的称谓,solana上的智能合约都被称作programs而非smart contracts.
+随后,我们预想一个智能能合约案例,来展开描述在solana上开发智能合约要处理哪些细节.
+Example Escrow Alice持有token X, Bob持有token Y,他们互相之间达成了交易约定: Alice 支付100X,和Bob手里50Y进行兑换.和我们购物使用淘宝一样,Alice和Bob都害怕交钱不发,所以需要一个能充当支付宝的智能合作作为一个可信赖的第三方托管,这就是我们案例: Escrow.
+直观的去想,让Alice发起交易的时候转账给合约就行,让Bob后续去找合约拿钱.但这是传统支付宝的做法:支付宝拥有一个巨大的数据库,可以通过键值的方式记录下不同数以亿计的用户的交易对.在solana上,智能合约的数据存储是通过account来实现的,而每一个account最多只能提供32KB的数据存储,无法存储跟合约无关的用户数据.
+solana并不是没有预见到这点,其提供的PDA(程序委托账户)能代我们做到记录无限的数据账户&ndash;当用户与合约交易时,为其生成专属的account来存储交易细节.当Alice和智能合约互动的时候, 智能合约通过确定的种子生成一个PDA账户来处理这笔交易.
+graph LR: Alice -> 让我们展开,一点点的捋下实现细节.
+Setting up the project 我们可以参照这个案例创建一个rust的项目,我们修改Cargo.toml,让其知道我们需要的依赖和编译结果产出.
+[package] name = &#34;solana-escrow&#34; version = &#34;0.1.0&#34; edition = &#34;2021&#34; license = &#34;WTFPL&#34; publish = false [dependencies] solana-program = &#34;1.9.4&#34; [lib] crate-type = [&#34;cdylib&#34;, &#34;lib&#34;] entrypoint.rs, program, and accounts 现在我们已经在着手编写这个智能合约了!如我们所见,最后编译成eBPF的程序,入口处在lib.rs中,我们通过use来引入任何被导入的函数,通过entrypoint!这个宏来定义process_instruction函数.这是唯一调用智能合约的方法,所有的合约调用都是通过entrypoint来触发.
+ 被调用的时候, program被传递给BPF Loader.">
+<meta name=author content="Me">
+<link rel=canonical href=https://blog.explosion.zip/posts/solana%E5%90%88%E7%BA%A6%E5%BC%80%E5%8F%91%E6%8C%87%E5%8C%97/>
+<meta name=google-site-verification content="XYZabc">
+<meta name=yandex-verification content="XYZabc">
+<meta name=msvalidate.01 content="XYZabc">
+<link crossorigin=anonymous href=/assets/css/stylesheet.bccfefac377bc340f06c260aed1bddf49a4354816d7c570d6aac75a997986c95.css integrity="sha256-vM/vrDd7w0DwbCYK7Rvd9JpDVIFtfFcNaqx1qZeYbJU=" rel="preload stylesheet" as=style>
+<script defer crossorigin=anonymous src=/assets/js/highlight.f413e19d0714851f6474e7ee9632408e58ac146fbdbe62747134bea2fa3415e0.js integrity="sha256-9BPhnQcUhR9kdOfuljJAjlisFG+9vmJ0cTS+ovo0FeA=" onload=hljs.initHighlightingOnLoad()></script>
+<link rel=icon href=https://blog.explosion.zip/%3Clink%20/%20abs%20url%3E>
+<link rel=icon type=image/png sizes=16x16 href=https://blog.explosion.zip/%3Clink%20/%20abs%20url%3E>
+<link rel=icon type=image/png sizes=32x32 href=https://blog.explosion.zip/%3Clink%20/%20abs%20url%3E>
+<link rel=apple-touch-icon href=https://blog.explosion.zip/%3Clink%20/%20abs%20url%3E>
+<link rel=mask-icon href=https://blog.explosion.zip/%3Clink%20/%20abs%20url%3E>
+<meta name=theme-color content="#2e2e33">
+<meta name=msapplication-TileColor content="#2e2e33">
+<noscript>
+<style>#theme-toggle,.top-link{display:none}</style>
+<style>@media(prefers-color-scheme:dark){:root{--theme:rgb(29, 30, 32);--entry:rgb(46, 46, 51);--primary:rgb(218, 218, 219);--secondary:rgb(155, 156, 157);--tertiary:rgb(65, 66, 68);--content:rgb(196, 196, 197);--hljs-bg:rgb(46, 46, 51);--code-bg:rgb(55, 56, 62);--border:rgb(51, 51, 51)}.list{background:var(--theme)}.list:not(.dark)::-webkit-scrollbar-track{background:0 0}.list:not(.dark)::-webkit-scrollbar-thumb{border-color:var(--theme)}}</style>
+</noscript><meta property="og:title" content="Solana合约开发指北">
+<meta property="og:description" content="Solana合约开发指北 这里假定solana需要的开发环境: rust/node.js甚至Solana客户端都已经装好了.
+合约是什么?简单来说,就是在提供多个函数rpc调用后,用户输入符合特定需求的结构体数据后,获得预期的结果或者符合规则的错误.同时提供在可接受的复杂度范围内,存储少量有关用户的元数据.
+ On Solana, smart contracts are called programs
+ 首先,先确定solana的相关术语.为了符合官方的称谓,solana上的智能合约都被称作programs而非smart contracts.
+随后,我们预想一个智能能合约案例,来展开描述在solana上开发智能合约要处理哪些细节.
+Example Escrow Alice持有token X, Bob持有token Y,他们互相之间达成了交易约定: Alice 支付100X,和Bob手里50Y进行兑换.和我们购物使用淘宝一样,Alice和Bob都害怕交钱不发,所以需要一个能充当支付宝的智能合作作为一个可信赖的第三方托管,这就是我们案例: Escrow.
+直观的去想,让Alice发起交易的时候转账给合约就行,让Bob后续去找合约拿钱.但这是传统支付宝的做法:支付宝拥有一个巨大的数据库,可以通过键值的方式记录下不同数以亿计的用户的交易对.在solana上,智能合约的数据存储是通过account来实现的,而每一个account最多只能提供32KB的数据存储,无法存储跟合约无关的用户数据.
+solana并不是没有预见到这点,其提供的PDA(程序委托账户)能代我们做到记录无限的数据账户&ndash;当用户与合约交易时,为其生成专属的account来存储交易细节.当Alice和智能合约互动的时候, 智能合约通过确定的种子生成一个PDA账户来处理这笔交易.
+graph LR: Alice -> 让我们展开,一点点的捋下实现细节.
+Setting up the project 我们可以参照这个案例创建一个rust的项目,我们修改Cargo.toml,让其知道我们需要的依赖和编译结果产出.
+[package] name = &#34;solana-escrow&#34; version = &#34;0.1.0&#34; edition = &#34;2021&#34; license = &#34;WTFPL&#34; publish = false [dependencies] solana-program = &#34;1.9.4&#34; [lib] crate-type = [&#34;cdylib&#34;, &#34;lib&#34;] entrypoint.rs, program, and accounts 现在我们已经在着手编写这个智能合约了!如我们所见,最后编译成eBPF的程序,入口处在lib.rs中,我们通过use来引入任何被导入的函数,通过entrypoint!这个宏来定义process_instruction函数.这是唯一调用智能合约的方法,所有的合约调用都是通过entrypoint来触发.
+ 被调用的时候, program被传递给BPF Loader.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://blog.explosion.zip/posts/solana%E5%90%88%E7%BA%A6%E5%BC%80%E5%8F%91%E6%8C%87%E5%8C%97/"><meta property="og:image" content="https://blog.explosion.zip/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E"><meta property="article:section" content="posts">
+<meta property="article:published_time" content="2022-08-30T13:22:27+08:00">
+<meta property="article:modified_time" content="2022-08-30T13:22:27+08:00"><meta property="og:site_name" content="ExampleSite">
+<meta name=twitter:card content="summary_large_image">
+<meta name=twitter:image content="https://blog.explosion.zip/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E">
+<meta name=twitter:title content="Solana合约开发指北">
+<meta name=twitter:description content="Solana合约开发指北 这里假定solana需要的开发环境: rust/node.js甚至Solana客户端都已经装好了.
+合约是什么?简单来说,就是在提供多个函数rpc调用后,用户输入符合特定需求的结构体数据后,获得预期的结果或者符合规则的错误.同时提供在可接受的复杂度范围内,存储少量有关用户的元数据.
+ On Solana, smart contracts are called programs
+ 首先,先确定solana的相关术语.为了符合官方的称谓,solana上的智能合约都被称作programs而非smart contracts.
+随后,我们预想一个智能能合约案例,来展开描述在solana上开发智能合约要处理哪些细节.
+Example Escrow Alice持有token X, Bob持有token Y,他们互相之间达成了交易约定: Alice 支付100X,和Bob手里50Y进行兑换.和我们购物使用淘宝一样,Alice和Bob都害怕交钱不发,所以需要一个能充当支付宝的智能合作作为一个可信赖的第三方托管,这就是我们案例: Escrow.
+直观的去想,让Alice发起交易的时候转账给合约就行,让Bob后续去找合约拿钱.但这是传统支付宝的做法:支付宝拥有一个巨大的数据库,可以通过键值的方式记录下不同数以亿计的用户的交易对.在solana上,智能合约的数据存储是通过account来实现的,而每一个account最多只能提供32KB的数据存储,无法存储跟合约无关的用户数据.
+solana并不是没有预见到这点,其提供的PDA(程序委托账户)能代我们做到记录无限的数据账户&ndash;当用户与合约交易时,为其生成专属的account来存储交易细节.当Alice和智能合约互动的时候, 智能合约通过确定的种子生成一个PDA账户来处理这笔交易.
+graph LR: Alice -> 让我们展开,一点点的捋下实现细节.
+Setting up the project 我们可以参照这个案例创建一个rust的项目,我们修改Cargo.toml,让其知道我们需要的依赖和编译结果产出.
+[package] name = &#34;solana-escrow&#34; version = &#34;0.1.0&#34; edition = &#34;2021&#34; license = &#34;WTFPL&#34; publish = false [dependencies] solana-program = &#34;1.9.4&#34; [lib] crate-type = [&#34;cdylib&#34;, &#34;lib&#34;] entrypoint.rs, program, and accounts 现在我们已经在着手编写这个智能合约了!如我们所见,最后编译成eBPF的程序,入口处在lib.rs中,我们通过use来引入任何被导入的函数,通过entrypoint!这个宏来定义process_instruction函数.这是唯一调用智能合约的方法,所有的合约调用都是通过entrypoint来触发.
+ 被调用的时候, program被传递给BPF Loader.">
+<script type=application/ld+json>{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Posts","item":"https://blog.explosion.zip/posts/"},{"@type":"ListItem","position":2,"name":"Solana合约开发指北","item":"https://blog.explosion.zip/posts/solana%E5%90%88%E7%BA%A6%E5%BC%80%E5%8F%91%E6%8C%87%E5%8C%97/"}]}</script>
+<script type=application/ld+json>{"@context":"https://schema.org","@type":"BlogPosting","headline":"Solana合约开发指北","name":"Solana合约开发指北","description":"Solana合约开发指北 这里假定solana需要的开发环境: rust/node.js甚至Solana客户端都已经装好了.\n合约是什么?简单来说,就是在提供多个函数rpc调用后,用户输入符合特定需求的结构体数据后,获得预期的结果或者符合规则的错误.同时提供在可接受的复杂度范围内,存储少量有关用户的元数据.\n On Solana, smart contracts are called programs\n 首先,先确定solana的相关术语.为了符合官方的称谓,solana上的智能合约都被称作programs而非smart contracts.\n随后,我们预想一个智能能合约案例,来展开描述在solana上开发智能合约要处理哪些细节.\nExample Escrow Alice持有token X, Bob持有token Y,他们互相之间达成了交易约定: Alice 支付100X,和Bob手里50Y进行兑换.和我们购物使用淘宝一样,Alice和Bob都害怕交钱不发,所以需要一个能充当支付宝的智能合作作为一个可信赖的第三方托管,这就是我们案例: Escrow.\n直观的去想,让Alice发起交易的时候转账给合约就行,让Bob后续去找合约拿钱.但这是传统支付宝的做法:支付宝拥有一个巨大的数据库,可以通过键值的方式记录下不同数以亿计的用户的交易对.在solana上,智能合约的数据存储是通过account来实现的,而每一个account最多只能提供32KB的数据存储,无法存储跟合约无关的用户数据.\nsolana并不是没有预见到这点,其提供的PDA(程序委托账户)能代我们做到记录无限的数据账户\u0026ndash;当用户与合约交易时,为其生成专属的account来存储交易细节.当Alice和智能合约互动的时候, 智能合约通过确定的种子生成一个PDA账户来处理这笔交易.\ngraph LR: Alice -\u0026gt; 让我们展开,一点点的捋下实现细节.\nSetting up the project 我们可以参照这个案例创建一个rust的项目,我们修改Cargo.toml,让其知道我们需要的依赖和编译结果产出.\n[package] name = \u0026#34;solana-escrow\u0026#34; version = \u0026#34;0.1.0\u0026#34; edition = \u0026#34;2021\u0026#34; license = \u0026#34;WTFPL\u0026#34; publish = false [dependencies] solana-program = \u0026#34;1.9.4\u0026#34; [lib] crate-type = [\u0026#34;cdylib\u0026#34;, \u0026#34;lib\u0026#34;] entrypoint.rs, program, and accounts 现在我们已经在着手编写这个智能合约了!如我们所见,最后编译成eBPF的程序,入口处在lib.rs中,我们通过use来引入任何被导入的函数,通过entrypoint!这个宏来定义process_instruction函数.这是唯一调用智能合约的方法,所有的合约调用都是通过entrypoint来触发.\n 被调用的时候, program被传递给BPF Loader.","keywords":[],"articleBody":"Solana合约开发指北 这里假定solana需要的开发环境: rust/node.js甚至Solana客户端都已经装好了.\n合约是什么?简单来说,就是在提供多个函数rpc调用后,用户输入符合特定需求的结构体数据后,获得预期的结果或者符合规则的错误.同时提供在可接受的复杂度范围内,存储少量有关用户的元数据.\n On Solana, smart contracts are called programs\n 首先,先确定solana的相关术语.为了符合官方的称谓,solana上的智能合约都被称作programs而非smart contracts.\n随后,我们预想一个智能能合约案例,来展开描述在solana上开发智能合约要处理哪些细节.\nExample Escrow Alice持有token X, Bob持有token Y,他们互相之间达成了交易约定: Alice 支付100X,和Bob手里50Y进行兑换.和我们购物使用淘宝一样,Alice和Bob都害怕交钱不发,所以需要一个能充当支付宝的智能合作作为一个可信赖的第三方托管,这就是我们案例: Escrow.\n直观的去想,让Alice发起交易的时候转账给合约就行,让Bob后续去找合约拿钱.但这是传统支付宝的做法:支付宝拥有一个巨大的数据库,可以通过键值的方式记录下不同数以亿计的用户的交易对.在solana上,智能合约的数据存储是通过account来实现的,而每一个account最多只能提供32KB的数据存储,无法存储跟合约无关的用户数据.\nsolana并不是没有预见到这点,其提供的PDA(程序委托账户)能代我们做到记录无限的数据账户–当用户与合约交易时,为其生成专属的account来存储交易细节.当Alice和智能合约互动的时候, 智能合约通过确定的种子生成一个PDA账户来处理这笔交易.\ngraph LR: Alice - 让我们展开,一点点的捋下实现细节.\nSetting up the project 我们可以参照这个案例创建一个rust的项目,我们修改Cargo.toml,让其知道我们需要的依赖和编译结果产出.\n[package] name = \"solana-escrow\" version = \"0.1.0\" edition = \"2021\" license = \"WTFPL\" publish = false [dependencies] solana-program = \"1.9.4\" [lib] crate-type = [\"cdylib\", \"lib\"] entrypoint.rs, program, and accounts 现在我们已经在着手编写这个智能合约了!如我们所见,最后编译成eBPF的程序,入口处在lib.rs中,我们通过use来引入任何被导入的函数,通过entrypoint!这个宏来定义process_instruction函数.这是唯一调用智能合约的方法,所有的合约调用都是通过entrypoint来触发.\n 被调用的时候, program被传递给BPF Loader. 不同的BPF Loader需要不同的entrypoint\n 这里我们创建了entrypoint.rs,用来设置程序的入口\nuse solana_program::{entrypoint, entrypoint::ProgramResult, pubkey::Pubkey, account_info::AccountInfo}; use crate::process::Processor; entrypoint!(process_instruction); fn process_instruction( program_id: \u0026Pubkey, accounts: \u0026[AccountInfo], instruction_data: \u0026[u8], ) - ProgramResult { Processor::process(program_id, accounts, instruction_data) } process_instruction作为入口函数,我们看到其接受了三个入参. program_id是这个program的地址,在后面会解释为什么要在程序内部访问它. instruction_data是调用者传递给程序的数据,可以是任何数据. 而accounts数组,则和solana的编程模型密切关联.我门需要account的原因是:\n solana program 是无状态的\n 如果我们想要存储状态,就需要使用账户. 我们的program本身存储在账户中,其被标记为可以被执行.账户可以保存数据和sol代币.每个账户有一个所有者,这个所有者可以对账户扣款或者调整其中对数据.\n accounts 只能被 program 所有\n 这个时候你会意识到: 你自己的sol账户实际上并不属于你. 但此时,你的资金仍然是安全的. 因为所有的sol交易都是由system program处理的.事实上,程序也是由程序所有.程序被存储在账户之中,这些可执行账户被BPF Loader所有. 唯一不属于BPF Loader的是, BPF Loader 和 system program.他们是NativeLoader的门徒,并拥有特殊权限,比如分配内存,标记账户为可执行.\n 理论上，程序对其拥有的账户有完全的自主权。由程序的创建者来限制这种自主权，并由程序的用户来验证程序的创建者是否真的这样做了。 所有要读取或写入的账户都必须传入entrypoint函数中\n 这允许运行时将事务并行化。如果运行时知道所有将被写入和被每个人在任何时候读取的账户，它可以并行运行那些不接触相同账户的事务，或者接触相同账户但只读不写。如果一个事务违反了这一约束，向一个运行时没有被通知的账户读或写，那么该事务将失败。\n现在，为了最后结束本节，在lib.rs旁边创建一个新的entrypoint.rs文件，并将lib.rs的代码移到那里。最后，在lib.rs内注册entrypoint模块。你必须对我们创建的所有文件都这样做。\ntheory recap 📚\neach program is processed by its BPF Loader and has an entrypoint whose structure depends on which BPF Loader is used accounts are used to store state accounts are owned by programs only the account owner may debit an account and adjust its data all accounts to be written to or read must be passed into the entrypoint\nAlice’s transaction instruction 前一段中我们创建了entrypoint.rs,描述了程序的入口,现在我们创建instruction.rs,来为程序实现API. 为了首先有个总体印象,我们先看一下solana 的program结构:\n. ├─ src │ ├─ lib.rs - registering modules │ ├─ entrypoint.rs - entrypoint to the program │ ├─ instruction.rs - program API, (de)serializing instruction data │ ├─ processor.rs - program logic │ ├─ state.rs - program objects, (de)serializing state │ ├─ error.rs - program specific errors ├─ .gitignore ├─ Cargo.lock ├─ Cargo.toml ├─ Xargo.toml 描述流程的话是这样的:\n 用户调用entrypoint entrypoint转发参数到processor processor 要求 instruction解码entrypoint传入的instruction_data 使用被解码的数据,processor会决定用什么函数处理请求 processor可以使用state.rs将状态编码到已传入entrypoint的账户中，或对账户的状态进行解码。  核心是:\n instruction.rs defines the “API” of a program\n 回到escrow\nAlice和Bob的主账户都是system_program的账户,而他们想交易的token,由token program创建.他们要持有token,就需要拥有由token program创建的账户. Alice和Bob都需要持有对方要交易的token的特别账户才能完成交易,所以在Alice和Bob的交易对中,我们至少要有4个账户.\ntoken ownership \u0026\u0026 transfer ownership 如果为了执行交易,Alice和Bob都持有不同的token账户,记住不同的token密钥去执行交易,未免太过繁琐.solana的代币程序规避了这种方式: token(代币)账户的所有者只能是program本身,而token本身的所有者,诸如alice还有Bob等用户,则是program在用户空间声明的数据,数据被编码在代币账户中,此外还有其他属性,如账户持有的代币余额. 所有,后续会将token的所有者被称为authority,而solana内部的token所有者被称为owner.这其实揭示了solana的token所有权机制:\n All internal Solana internal account information are saved into fields on the account (opens new window)but never into the data field which is solely meant for user space information 所有Solana内部账户的信息都被保存在账户的字段中（打开新窗口），但绝不会保存在数据字段中，因为数据字段只用于用户空间信息\n 下图简单的描述了 “用户空间” 中token的所有权. Alice为了使用一部分token与Bob进行交易,她创建了一个关于X token的临时账户,并向其转移交易量的token,随后她调用token program中的函数,将这个临时的所有权转移到了托管程序中.而这个托管程序,就是后面要涉及到的合约为其生成的PDA. 继续回到 Instruction // inside instruction.rs pub enum EscrowInstruction { /// Starts the trade by creating and populating an escrow account and transferring ownership of the given temp token account to the PDA  ///  ///  /// Accounts expected:  ///  /// 0. `[signer]` The account of the person initializing the escrow  /// 1. `[writable]` Temporary token account that should be created prior to this instruction and owned by the initializer  /// 2. `[]` The initializer's token account for the token they will receive should the trade go through  /// 3. `[writable]` The escrow account, it will hold all necessary info about the trade.  /// 4. `[]` The rent sysvar  /// 5. `[]` The token program  InitEscrow { /// The amount party A expects to receive of token Y  amount: u64 } } 回到instruction,我们先添加第一个指令.通过这个指令,Alice可以初始化她想执行的交易.\n注意,///这种注释不会影响到代码. writable标志意味着,调用会尝试写账户,如果失败了那么交易会失败.\n设: Alice发起交易存入token X并设置需要的token Y数量, 稍后Bob会拿token Y去执行交易 那么, Alice首先调用 InitEscrow,这条指令期待的Accounts就如下所示: 0. [signer] 被用来交易持有token所有权的临时账户,其需要Alice的签名,所以这是Alice的地址,声明了签名人是谁\n 需要被写入的 temp token X account alice‘s token Y account 一个可写的escrow account rent sysvar 租金账户变量 token program  随后我们实现instruction对instruction_data的解码操作:\n// inside instruction.rs use std::convert::TryInto; use solana_program::program_error::ProgramError; use crate::error::EscrowError::InvalidInstruction; pub enum EscrowInstruction { InitEscrow { /// The amount party A expects to receive of token Y  amount: u64 } } impl EscrowInstruction { /// Unpacks a byte buffer into a [EscrowInstruction](enum.EscrowInstruction.html).  pub fn unpack(input: \u0026[u8]) - ResultSelf, ProgramError { let (tag, rest) = input.split_first().ok_or(InvalidInstruction)?; Ok(match tag { 0 = Self::InitEscrow { amount: Self::unpack_amount(rest)?, }, _ = return Err(InvalidInstruction.into()), }) } fn unpack_amount(input: \u0026[u8]) - Resultu64, ProgramError { let amount = input .get(..8) .and_then(|slice| slice.try_into().ok()) .map(u64::from_le_bytes) .ok_or(InvalidInstruction)?; Ok(amount) } } unpack实现了解析\u0026[u8] (一个被引用的u8数组).这里,u8数组的第一个byte被用来作为tag去识别类型. unpack_amount这里用来获得结构体中的amount具体金额,其代表了Alice想要获得的token Y数量.\nprocess.rs 能解析用户调用数据后,我们开始编写processor,来实现合约操作.\nuse solana_program::{ account_info::AccountInfo, entrypoint::ProgramResult, msg, pubkey::Pubkey, }; use crate::instruction::EscrowInstruction; pub struct Processor; impl Processor { pub fn process(program_id: \u0026Pubkey, accounts: \u0026[AccountInfo], instruction_data: \u0026[u8]) - ProgramResult { let instruction = EscrowInstruction::unpack(instruction_data)?; match instruction { EscrowInstruction::InitEscrow { amount } = { msg!(\"Instruction: InitEscrow\"); //日志信息  Self::process_init_escrow(accounts, amount, program_id) } } } } 这段代码逻辑比较简单,在接受到指令后,解析成数据,执行对应的processer.\nfn process_init_escrow ⚠️前方大量代码警告⚠️\nDon’t Panic, 我会在注释里面讲清楚\nuse solana_program::{ account_info::{next_account_info, AccountInfo}, entrypoint::ProgramResult, program_error::ProgramError, msg, pubkey::Pubkey, }; ... fn process_init_escrow( accounts: \u0026[AccountInfo], amount: u64, program_id: \u0026Pubkey, ) - ProgramResult { let account_info_iter = \u0026mut accounts.iter(); ///开启账户迭代器! 设置为mutable是为了可以移动账户的所有权  let initializer = next_account_info(account_info_iter)?; //Alice main account,在这笔交易中,她需要是一个signer  if !initializer.is_signer { return Err(ProgramError::MissingRequiredSignature); } let temp_token_account = next_account_info(account_info_iter)?; let token_to_receive_account = next_account_info(account_info_iter)?; // Q: \"why do we check that the token_to_receive_account is actually owned by the token program but don't do the same for the temp_token_account?\".  // Q: 为什么要检查token_to_receive_account是否真的为token程序所有?而不是对temp_token_account做同样的检查?  // A: 在函数的后面，我们将要求令牌程序将temp_token_account的所有权转移给PDA。如果temp_token_account不属于token程序，那么这个转移就会失败，  // 只有账户的拥有者可以修改账户  if *token_to_receive_account.owner != spl_token::id() { return Err(ProgramError::IncorrectProgramId); } //  let escrow_account = next_account_info(account_info_iter)?; let rent = \u0026Rent::from_account_info(next_account_info(account_info_iter)?)?; // 免租租金  if !rent.is_exempt(escrow_account.lamports(), escrow_account.data_len()) { return Err(EscrowError::NotRentExempt.into()); } let mut escrow_info = Escrow::unpack_unchecked(\u0026escrow_account.try_borrow_data()?)?; if escrow_info.is_initialized() { return Err(ProgramError::AccountAlreadyInitialized); } escrow_info.expected_amount = amount; Escrow::pack(escrow_info, \u0026mut escrow_account.try_borrow_mut_data()?)?; let (pda, _bump_seed) = Pubkey::find_program_address(\u0026[b\"escrow\"], program_id); let token_program = next_account_info(account_info_iter)?; let owner_change_ix = spl_token::instruction::set_authority( token_program.key, temp_token_account.key, Some(\u0026pda), AuthorityType::AccountOwner, initializer.key, \u0026[\u0026initializer.key], )?; invoke( \u0026owner_change_ix, \u0026[ temp_token_account.clone(), initializer.clone(), token_program.clone(), ], )?; Ok(()) } rentsysvar出现在了process的过程中.\n Rent is deducted from an account’s balance according to their space requirements (i.e. the space an account and its fields take up in memory) regularly. An account can, however, be made rent-exempt if its balance is higher than some threshold that depends on the space it’s consuming\n Alice转账过程中开了个账户,在租金上不是免租的,她以此向Bob发起了交易. Bob当时没有收取,十年后,Alice向Bob发送的1000个X token现在能换十个亿了,Bob想起来自己有个暴富的机会决定去收取,但是账户因为租金不是免租的,被solana系统干掉了.\n这合理吗?这不合理.\n更何况,现在租金几乎是两到三天一收(epoch),如果不是免租的,很快就会这样意外的burn掉了token,这是不可预期的错误行为. 所以为了交易的安全,alice必须向这个账户存够能让其免租的sol/lamports.\n最后记得\n[dependencies] solana-program = \"1.9.4\" spl-token = {version = \"3.2.0\", features = [\"no-entrypoint\"]} error.rs ... [dependencies] solana-program = \"1.9.4\" spl-token = {version = \"3.2.0\", features = [\"no-entrypoint\"]} thiserror = \"1.0.24\" // inside error.rs use thiserror::Error; use solana_program::program_error::ProgramError; #[derive(Error, Debug, Copy, Clone)] pub enum EscrowError { /// Invalid instruction  #[error(\"Invalid Instruction\")] InvalidInstruction, } impl FromEscrowError for ProgramError { fn from(e: EscrowError) - Self { ProgramError::Custom(e as u32) } } state.rs use solana_program::pubkey::Pubkey; pub struct Escrow { pub is_initialized: bool, pub initializer_pubkey: Pubkey, pub temp_token_account_pubkey: Pubkey, pub initializer_token_to_receive_account_pubkey: Pubkey, pub expected_amount: u64, } CPIs Program Derived Address PDAs Bob‘s Transaction Anchor 走完上面的流程,是不是感受到了粗陋和繁琐?\n传输数据用的是最基本的Accounts数组/u8数组,为了拿到数据,我们要通过计算数据的长度,一个个取出来并强壮,这看起来并不像是现代人会干的事情.\n所以这里介绍一下Anchor,其将之前繁琐步骤中不断重复的绝大多数都用宏做了化简,来降低我们可怜的1500ml左右的的脑浆上的心智负担.\nAnchor install  参考  Programming on Solana - An Introduction  ","wordCount":"947","inLanguage":"en","datePublished":"2022-08-30T13:22:27+08:00","dateModified":"2022-08-30T13:22:27+08:00","author":{"@type":"Person","name":"Me"},"mainEntityOfPage":{"@type":"WebPage","@id":"https://blog.explosion.zip/posts/solana%E5%90%88%E7%BA%A6%E5%BC%80%E5%8F%91%E6%8C%87%E5%8C%97/"},"publisher":{"@type":"Organization","name":"笔记","logo":{"@type":"ImageObject","url":"https://blog.explosion.zip/%3Clink%20/%20abs%20url%3E"}}}</script>
+</head>
+<body id=top>
+<script>localStorage.getItem("pref-theme")==="dark"?document.body.classList.add('dark'):localStorage.getItem("pref-theme")==="light"?document.body.classList.remove('dark'):window.matchMedia('(prefers-color-scheme: dark)').matches&&document.body.classList.add('dark')</script>
+<header class=header>
+<nav class=nav>
+<div class=logo>
+<a href=https://blog.explosion.zip/ accesskey=h title="笔记 (Alt + H)">笔记</a>
+<div class=logo-switches>
+<button id=theme-toggle accesskey=t title="(Alt + T)"><svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg><svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+</button>
+</div>
+</div>
+<ul id=menu>
+<li>
+<a href=https://blog.explosion.zip/categories/ title=categories>
+<span>categories</span>
+</a>
+</li>
+<li>
+<a href=https://blog.explosion.zip/tags/ title=tags>
+<span>tags</span>
+</a>
+</li>
+</ul>
+</nav>
+</header>
+<main class=main>
+<article class=post-single>
+<header class=post-header>
+<div class=breadcrumbs><a href=https://blog.explosion.zip/>Home</a>&nbsp;»&nbsp;<a href=https://blog.explosion.zip/posts/>Posts</a></div>
+<h1 class=post-title>
+Solana合约开发指北
+</h1>
+<div class=post-meta><span title="2022-08-30 13:22:27 +0800 +0800">August 30, 2022</span>&nbsp;·&nbsp;5 min&nbsp;·&nbsp;Me&nbsp;|&nbsp;<a href=https://github.com/%3cpath_to_repo%3e/content/posts/solana%e5%90%88%e7%ba%a6%e5%bc%80%e5%8f%91%e6%8c%87%e5%8c%97.md rel="noopener noreferrer" target=_blank>Suggest Changes</a>
+</div>
+</header>
+<div class=post-content><h1 id=solana合约开发指北>Solana合约开发指北<a hidden class=anchor aria-hidden=true href=#solana合约开发指北>#</a></h1>
+<p>这里假定solana需要的开发环境: rust/node.js甚至Solana客户端都已经装好了.</p>
+<p>合约是什么?简单来说,就是在提供多个函数rpc调用后,用户输入符合特定需求的结构体数据后,获得预期的结果或者符合规则的错误.同时提供在可接受的复杂度范围内,存储少量有关用户的元数据.</p>
+<blockquote>
+<p>On Solana, smart contracts are called programs</p>
+</blockquote>
+<p>首先,先确定solana的相关术语.为了符合官方的称谓,solana上的智能合约都被称作programs而非smart contracts.<br>
+随后,我们预想一个智能能合约案例,来展开描述在solana上开发智能合约要处理哪些细节.</p>
+<h2 id=example-escrow>Example Escrow<a hidden class=anchor aria-hidden=true href=#example-escrow>#</a></h2>
+<p>Alice持有token X, Bob持有token Y,他们互相之间达成了交易约定: Alice 支付100X,和Bob手里50Y进行兑换.和我们购物使用淘宝一样,Alice和Bob都害怕交钱不发,所以需要一个能充当支付宝的智能合作作为一个可信赖的第三方托管,这就是我们案例: Escrow.</p>
+<p><img loading=lazy src=../../static/image/escrow.gif alt=Escrow>
+</p>
+<p>直观的去想,让Alice发起交易的时候转账给合约就行,让Bob后续去找合约拿钱.但这是传统支付宝的做法:支付宝拥有一个巨大的数据库,可以通过键值的方式记录下不同数以亿计的用户的交易对.在solana上,智能合约的数据存储是通过account来实现的,而每一个account最多只能提供32KB的数据存储,无法存储跟合约无关的用户数据.</p>
+<p>solana并不是没有预见到这点,其提供的PDA(程序委托账户)能代我们做到记录无限的数据账户&ndash;当用户与合约交易时,为其生成专属的account来存储交易细节.当Alice和智能合约互动的时候, 智能合约通过确定的种子生成一个PDA账户来处理这笔交易.</p>
+<pre tabindex=0><code class=language-mermaid data-lang=mermaid>graph LR:
+    Alice -&gt; 
+</code></pre><p>让我们展开,一点点的捋下实现细节.</p>
+<h2 id=setting-up-the-project>Setting up the project<a hidden class=anchor aria-hidden=true href=#setting-up-the-project>#</a></h2>
+<p>我们可以参照这个<a href=https://github.com/mvines/solana-bpf-program-template>案例</a>创建一个rust的项目,我们修改<code>Cargo.toml</code>,让其知道我们需要的依赖和编译结果产出.</p>
+<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-toml data-lang=toml>[<span style=color:#a6e22e>package</span>]
+<span style=color:#a6e22e>name</span> = <span style=color:#e6db74>&#34;solana-escrow&#34;</span>
+<span style=color:#a6e22e>version</span> = <span style=color:#e6db74>&#34;0.1.0&#34;</span>
+<span style=color:#a6e22e>edition</span> = <span style=color:#e6db74>&#34;2021&#34;</span>
+<span style=color:#a6e22e>license</span> = <span style=color:#e6db74>&#34;WTFPL&#34;</span>
+<span style=color:#a6e22e>publish</span> = <span style=color:#66d9ef>false</span>
+
+[<span style=color:#a6e22e>dependencies</span>]
+<span style=color:#a6e22e>solana-program</span> = <span style=color:#e6db74>&#34;1.9.4&#34;</span>
+
+[<span style=color:#a6e22e>lib</span>]
+<span style=color:#a6e22e>crate-type</span> = [<span style=color:#e6db74>&#34;cdylib&#34;</span>, <span style=color:#e6db74>&#34;lib&#34;</span>]
+</code></pre></div><h2 id=entrypointrs-program-and-accounts>entrypoint.rs, program, and accounts<a hidden class=anchor aria-hidden=true href=#entrypointrs-program-and-accounts>#</a></h2>
+<p>现在我们已经在着手编写这个智能合约了!如我们所见,最后编译成eBPF的程序,入口处在<code>lib.rs</code>中,我们通过<code>use</code>来引入任何被导入的函数,通过<code>entrypoint!</code>这个宏来定义<code>process_instruction</code>函数.这是唯一调用智能合约的方法,所有的合约调用都是通过entrypoint来触发.</p>
+<blockquote>
+<p>被调用的时候, program被传递给BPF Loader. 不同的BPF Loader需要不同的entrypoint</p>
+</blockquote>
+<p>这里我们创建了<code>entrypoint.rs</code>,用来设置程序的入口</p>
+<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rs data-lang=rs><span style=color:#66d9ef>use</span> solana_program::{entrypoint, entrypoint::ProgramResult, pubkey::Pubkey, account_info::AccountInfo};
+
+<span style=color:#66d9ef>use</span> <span style=color:#66d9ef>crate</span>::process::Processor;
+
+entrypoint<span style=color:#f92672>!</span>(process_instruction);
+<span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>process_instruction</span>(
+    program_id: <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>Pubkey</span>,
+    accounts: <span style=color:#66d9ef>&amp;</span>[AccountInfo],
+    instruction_data: <span style=color:#66d9ef>&amp;</span>[<span style=color:#66d9ef>u8</span>],
+) -&gt; <span style=color:#a6e22e>ProgramResult</span> {
+    Processor::process(program_id, accounts, instruction_data)
+}
+</code></pre></div><p><code>process_instruction</code>作为入口函数,我们看到其接受了三个入参. <code>program_id</code>是这个program的地址,在后面会解释为什么要在程序内部访问它. <code>instruction_data</code>是调用者传递给程序的数据,可以是任何数据. 而<code>accounts</code>数组,则和solana的编程模型密切关联.我门需要account的原因是:</p>
+<blockquote>
+<p>solana program 是无状态的</p>
+</blockquote>
+<p>如果我们想要存储状态,就需要使用账户. 我们的program本身存储在账户中,其被标记为可以被执行.账户可以保存数据和sol代币.每个账户有一个所有者,这个所有者可以对账户扣款或者调整其中对数据.</p>
+<blockquote>
+<p>accounts 只能被 program 所有</p>
+</blockquote>
+<p>这个时候你会意识到: 你自己的sol账户实际上并不属于你. 但此时,你的资金仍然是<a href="https://www.urbandictionary.com/define.php?term=Safu">安全的</a>. 因为所有的sol交易都是由<code>system program</code>处理的.事实上,程序也是由程序所有.程序被存储在账户之中,这些可执行账户被<code>BPF Loader</code>所有. 唯一不属于<code>BPF Loader</code>的是, <code>BPF Loader</code> 和 <code>system program</code>.他们是<code>NativeLoader</code>的门徒,并拥有特殊权限,比如分配内存,标记账户为可执行.</p>
+<blockquote>
+<p>理论上，程序对其拥有的账户有完全的自主权。由程序的创建者来限制这种自主权，并由程序的用户来验证程序的创建者是否真的这样做了。
+所有要读取或写入的账户都必须传入entrypoint函数中</p>
+</blockquote>
+<p>这允许运行时将事务并行化。如果运行时知道所有将被写入和被每个人在任何时候读取的账户，它可以并行运行那些不接触相同账户的事务，或者接触相同账户但只读不写。如果一个事务违反了这一约束，向一个运行时没有被通知的账户读或写，那么该事务将失败。</p>
+<p>现在，为了最后结束本节，在lib.rs旁边创建一个新的entrypoint.rs文件，并将lib.rs的代码移到那里。最后，在lib.rs内注册entrypoint模块。你必须对我们创建的所有文件都这样做。</p>
+<p>theory recap 📚<br>
+each program is processed by its BPF Loader and has an entrypoint whose structure depends on which BPF Loader is used
+accounts are used to store state
+accounts are owned by programs
+only the account owner may debit an account and adjust its data
+all accounts to be written to or read must be passed into the entrypoint</p>
+<h2 id=alices-transaction>Alice’s transaction<a hidden class=anchor aria-hidden=true href=#alices-transaction>#</a></h2>
+<h3 id=instruction>instruction<a hidden class=anchor aria-hidden=true href=#instruction>#</a></h3>
+<p>前一段中我们创建了<code>entrypoint.rs</code>,描述了程序的入口,现在我们创建<code>instruction.rs</code>,来为程序实现API.
+为了首先有个总体印象,我们先看一下solana 的program结构:</p>
+<pre tabindex=0><code>.
+├─ src
+│  ├─ lib.rs -&gt; registering modules
+│  ├─ entrypoint.rs -&gt; entrypoint to the program
+│  ├─ instruction.rs -&gt; program API, (de)serializing instruction data
+│  ├─ processor.rs -&gt; program logic
+│  ├─ state.rs -&gt; program objects, (de)serializing state
+│  ├─ error.rs -&gt; program specific errors
+├─ .gitignore
+├─ Cargo.lock
+├─ Cargo.toml
+├─ Xargo.toml
+</code></pre><p>描述流程的话是这样的:</p>
+<ol>
+<li>用户调用entrypoint</li>
+<li>entrypoint转发参数到processor</li>
+<li>processor 要求 instruction解码entrypoint传入的instruction_data</li>
+<li>使用被解码的数据,processor会决定用什么函数处理请求</li>
+<li>processor可以使用state.rs将状态编码到已传入entrypoint的账户中，或对账户的状态进行解码。</li>
+</ol>
+<p>核心是:</p>
+<blockquote>
+<p>instruction.rs defines the &ldquo;API&rdquo; of a program</p>
+</blockquote>
+<p>回到escrow</p>
+<p>Alice和Bob的主账户都是<code>system_program</code>的账户,而他们想交易的token,由<code>token program</code>创建.他们要持有token,就需要拥有由<code>token program</code>创建的账户. Alice和Bob都需要持有对方要交易的token的特别账户才能完成交易,所以在Alice和Bob的交易对中,我们至少要有4个账户.</p>
+<p><img loading=lazy src=../../static/image/df070a8.png alt=escrow3>
+</p>
+<h3 id=token-ownership--transfer-ownership>token ownership && transfer ownership<a hidden class=anchor aria-hidden=true href=#token-ownership--transfer-ownership>#</a></h3>
+<p>如果为了执行交易,Alice和Bob都持有不同的token账户,记住不同的token密钥去执行交易,未免太过繁琐.solana的代币程序规避了这种方式: token(代币)账户的所有者只能是program本身,而token本身的所有者,诸如alice还有Bob等用户,则是program在用户空间声明的数据,数据被编码在代币账户中,此外还有<a href=https://github.com/solana-labs/solana-program-library/blob/80e29ef6b9a081d457849a2ca42db50d7da0e37e/token/program/src/state.rs#L86>其他属性</a>,如账户持有的代币余额. 所有,后续会将token的所有者被称为<code>authority</code>,而solana内部的token所有者被称为<code>owner</code>.这其实揭示了solana的token所有权机制:</p>
+<blockquote>
+<p>All internal Solana internal account information are saved into fields on the account (opens new window)but never into the data field which is solely meant for user space information
+所有Solana内部账户的信息都被保存在账户的字段中（打开新窗口），但绝不会保存在数据字段中，因为数据字段只用于用户空间信息</p>
+</blockquote>
+<p><img loading=lazy src=../../static/image/account.7425ef71.png alt="solana account">
+下图简单的描述了 “用户空间” 中token的所有权.
+<img loading=lazy src=../../static/image/escrow_token_accounts_1.ae89bb8d.png alt=escrow_token_accounts_1>
+Alice为了使用一部分token与Bob进行交易,她创建了一个关于X token的临时账户,并向其转移交易量的token,随后她调用token program中的函数,将这个临时的所有权转移到了托管程序中.而这个托管程序,就是后面要涉及到的合约为其生成的PDA.
+<img loading=lazy src=../../static/image/escrow_token_accounts_2.9291f5c8.png alt=escrow_token_accounts_2>
+</p>
+<h3 id=继续回到-instruction>继续回到 Instruction<a hidden class=anchor aria-hidden=true href=#继续回到-instruction>#</a></h3>
+<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rs data-lang=rs><span style=color:#75715e>// inside instruction.rs
+</span><span style=color:#75715e></span><span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>enum</span> <span style=color:#a6e22e>EscrowInstruction</span> {
+
+    <span style=color:#e6db74>/// Starts the trade by creating and populating an escrow account and transferring ownership of the given temp token account to the PDA
+</span><span style=color:#e6db74></span>    <span style=color:#e6db74>///
+</span><span style=color:#e6db74></span>    <span style=color:#e6db74>///
+</span><span style=color:#e6db74></span>    <span style=color:#e6db74>/// Accounts expected:
+</span><span style=color:#e6db74></span>    <span style=color:#e6db74>///
+</span><span style=color:#e6db74></span>    <span style=color:#e6db74>/// 0. `[signer]` The account of the person initializing the escrow
+</span><span style=color:#e6db74></span>    <span style=color:#e6db74>/// 1. `[writable]` Temporary token account that should be created prior to this instruction and owned by the initializer
+</span><span style=color:#e6db74></span>    <span style=color:#e6db74>/// 2. `[]` The initializer&#39;s token account for the token they will receive should the trade go through
+</span><span style=color:#e6db74></span>    <span style=color:#e6db74>/// 3. `[writable]` The escrow account, it will hold all necessary info about the trade.
+</span><span style=color:#e6db74></span>    <span style=color:#e6db74>/// 4. `[]` The rent sysvar
+</span><span style=color:#e6db74></span>    <span style=color:#e6db74>/// 5. `[]` The token program
+</span><span style=color:#e6db74></span>    InitEscrow {
+        <span style=color:#e6db74>/// The amount party A expects to receive of token Y
+</span><span style=color:#e6db74></span>        amount: <span style=color:#66d9ef>u64</span>
+    }
+}
+</code></pre></div><p>回到instruction,我们先添加第一个指令.通过这个指令,Alice可以初始化她想执行的交易.</p>
+<p>注意,<code>///</code>这种注释不会影响到代码. <code>writable</code>标志意味着,调用会尝试写账户,如果失败了那么交易会失败.</p>
+<p>设: Alice发起交易存入token X并设置需要的token Y数量, 稍后Bob会拿token Y去执行交易
+那么, Alice首先调用 InitEscrow,这条指令期待的Accounts就如下所示:
+0. <code>[signer]</code> 被用来交易持有token所有权的临时账户,其需要Alice的签名,所以这是Alice的地址,声明了签名人是谁</p>
+<ol>
+<li>需要被写入的 temp token X account</li>
+<li>alice‘s token Y account</li>
+<li>一个可写的escrow account</li>
+<li>rent sysvar 租金账户变量</li>
+<li>token program</li>
+</ol>
+<p>随后我们实现instruction对instruction_data的解码操作:</p>
+<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rs data-lang=rs><span style=color:#75715e>// inside instruction.rs
+</span><span style=color:#75715e></span><span style=color:#66d9ef>use</span> std::convert::TryInto;
+<span style=color:#66d9ef>use</span> solana_program::program_error::ProgramError;
+
+<span style=color:#66d9ef>use</span> <span style=color:#66d9ef>crate</span>::error::EscrowError::InvalidInstruction;
+
+ <span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>enum</span> <span style=color:#a6e22e>EscrowInstruction</span> {
+    InitEscrow {
+        <span style=color:#e6db74>/// The amount party A expects to receive of token Y
+</span><span style=color:#e6db74></span>        amount: <span style=color:#66d9ef>u64</span>
+    }
+}
+
+<span style=color:#66d9ef>impl</span> EscrowInstruction {
+    <span style=color:#e6db74>/// Unpacks a byte buffer into a [EscrowInstruction](enum.EscrowInstruction.html).
+</span><span style=color:#e6db74></span>    <span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>unpack</span>(input: <span style=color:#66d9ef>&amp;</span>[<span style=color:#66d9ef>u8</span>]) -&gt; Result<span style=color:#f92672>&lt;</span>Self, ProgramError<span style=color:#f92672>&gt;</span> {
+        <span style=color:#66d9ef>let</span> (tag, rest) <span style=color:#f92672>=</span> input.split_first().ok_or(InvalidInstruction)<span style=color:#f92672>?</span>;
+
+        Ok(<span style=color:#66d9ef>match</span> tag {
+            <span style=color:#ae81ff>0</span> <span style=color:#f92672>=&gt;</span> Self::InitEscrow {
+                amount: <span style=color:#a6e22e>Self</span>::unpack_amount(rest)<span style=color:#f92672>?</span>,
+            },
+            _ <span style=color:#f92672>=&gt;</span> <span style=color:#66d9ef>return</span> Err(InvalidInstruction.into()),
+        })
+    }
+
+    <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>unpack_amount</span>(input: <span style=color:#66d9ef>&amp;</span>[<span style=color:#66d9ef>u8</span>]) -&gt; Result<span style=color:#f92672>&lt;</span><span style=color:#66d9ef>u64</span>, ProgramError<span style=color:#f92672>&gt;</span> {
+        <span style=color:#66d9ef>let</span> amount <span style=color:#f92672>=</span> input
+            .get(<span style=color:#f92672>..</span><span style=color:#ae81ff>8</span>)
+            .and_then(<span style=color:#f92672>|</span>slice<span style=color:#f92672>|</span> slice.try_into().ok())
+            .map(<span style=color:#66d9ef>u64</span>::from_le_bytes)
+            .ok_or(InvalidInstruction)<span style=color:#f92672>?</span>;
+        Ok(amount)
+    }
+}
+</code></pre></div><p><code>unpack</code><a href=https://doc.rust-lang.org/stable/book/ch04-02-references-and-borrowing.html>实现</a>了解析&[u8] (一个被引用的u8数组).这里,u8数组的第一个byte被用来作为tag去识别类型. <code>unpack_amount</code>这里用来获得结构体中的amount具体金额,其代表了Alice想要获得的token Y数量.</p>
+<h3 id=processrs>process.rs<a hidden class=anchor aria-hidden=true href=#processrs>#</a></h3>
+<p>能解析用户调用数据后,我们开始编写processor,来实现合约操作.</p>
+<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rs data-lang=rs><span style=color:#66d9ef>use</span> solana_program::{
+    account_info::AccountInfo,
+    entrypoint::ProgramResult,
+    msg,
+    pubkey::Pubkey,
+};
+
+<span style=color:#66d9ef>use</span> <span style=color:#66d9ef>crate</span>::instruction::EscrowInstruction;
+
+<span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>struct</span> <span style=color:#a6e22e>Processor</span>;
+<span style=color:#66d9ef>impl</span> Processor {
+    <span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>process</span>(program_id: <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>Pubkey</span>, accounts: <span style=color:#66d9ef>&amp;</span>[AccountInfo], instruction_data: <span style=color:#66d9ef>&amp;</span>[<span style=color:#66d9ef>u8</span>]) -&gt; <span style=color:#a6e22e>ProgramResult</span> {
+        <span style=color:#66d9ef>let</span> instruction <span style=color:#f92672>=</span> EscrowInstruction::unpack(instruction_data)<span style=color:#f92672>?</span>;
+
+        <span style=color:#66d9ef>match</span> instruction {
+            EscrowInstruction::InitEscrow { amount } <span style=color:#f92672>=&gt;</span> {
+                msg<span style=color:#f92672>!</span>(<span style=color:#e6db74>&#34;Instruction: InitEscrow&#34;</span>); <span style=color:#75715e>//日志信息
+</span><span style=color:#75715e></span>                Self::process_init_escrow(accounts, amount, program_id)
+            }
+        }
+    }
+}
+</code></pre></div><p>这段代码逻辑比较简单,在接受到指令后,解析成数据,执行对应的processer.</p>
+<h3 id=fn-process_init_escrow>fn process_init_escrow<a hidden class=anchor aria-hidden=true href=#fn-process_init_escrow>#</a></h3>
+<p>⚠️前方大量代码警告⚠️<br>
+Don&rsquo;t Panic, 我会在注释里面讲清楚</p>
+<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rs data-lang=rs><span style=color:#66d9ef>use</span> solana_program::{
+    account_info::{next_account_info, AccountInfo},
+    entrypoint::ProgramResult,
+    program_error::ProgramError,
+    msg,
+    pubkey::Pubkey,
+};
+<span style=color:#f92672>..</span>.
+ <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>process_init_escrow</span>(
+        accounts: <span style=color:#66d9ef>&amp;</span>[AccountInfo],
+        amount: <span style=color:#66d9ef>u64</span>,
+        program_id: <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>Pubkey</span>,
+    ) -&gt; <span style=color:#a6e22e>ProgramResult</span> {
+        <span style=color:#66d9ef>let</span> account_info_iter <span style=color:#f92672>=</span> <span style=color:#f92672>&amp;</span><span style=color:#66d9ef>mut</span> accounts.iter(); <span style=color:#e6db74>///开启账户迭代器! 设置为mutable是为了可以移动账户的所有权
+</span><span style=color:#e6db74></span>        <span style=color:#66d9ef>let</span> initializer <span style=color:#f92672>=</span> next_account_info(account_info_iter)<span style=color:#f92672>?</span>; 
+
+        <span style=color:#75715e>//Alice main account,在这笔交易中,她需要是一个signer
+</span><span style=color:#75715e></span>        <span style=color:#66d9ef>if</span> <span style=color:#f92672>!</span>initializer.is_signer {
+            <span style=color:#66d9ef>return</span> Err(ProgramError::MissingRequiredSignature);
+        }
+
+        <span style=color:#66d9ef>let</span> temp_token_account <span style=color:#f92672>=</span> next_account_info(account_info_iter)<span style=color:#f92672>?</span>;
+        <span style=color:#66d9ef>let</span> token_to_receive_account <span style=color:#f92672>=</span> next_account_info(account_info_iter)<span style=color:#f92672>?</span>;
+        <span style=color:#75715e>// Q: &#34;why do we check that the token_to_receive_account is actually owned by the token program but don&#39;t do the same for the temp_token_account?&#34;.
+</span><span style=color:#75715e></span>        <span style=color:#75715e>// Q: 为什么要检查token_to_receive_account是否真的为token程序所有?而不是对temp_token_account做同样的检查?
+</span><span style=color:#75715e></span>        <span style=color:#75715e>// A: 在函数的后面，我们将要求令牌程序将temp_token_account的所有权转移给PDA。如果temp_token_account不属于token程序，那么这个转移就会失败，
+</span><span style=color:#75715e></span>        <span style=color:#75715e>// 只有账户的拥有者可以修改账户
+</span><span style=color:#75715e></span>        <span style=color:#66d9ef>if</span> <span style=color:#f92672>*</span>token_to_receive_account.owner <span style=color:#f92672>!=</span> spl_token::id() {
+            <span style=color:#66d9ef>return</span> Err(ProgramError::IncorrectProgramId);
+        }
+
+        <span style=color:#75715e>// 
+</span><span style=color:#75715e></span>        <span style=color:#66d9ef>let</span> escrow_account <span style=color:#f92672>=</span> next_account_info(account_info_iter)<span style=color:#f92672>?</span>;
+        <span style=color:#66d9ef>let</span> rent <span style=color:#f92672>=</span> <span style=color:#f92672>&amp;</span>Rent::from_account_info(next_account_info(account_info_iter)<span style=color:#f92672>?</span>)<span style=color:#f92672>?</span>;
+
+        <span style=color:#75715e>// 免租租金
+</span><span style=color:#75715e></span>        <span style=color:#66d9ef>if</span> <span style=color:#f92672>!</span>rent.is_exempt(escrow_account.lamports(), escrow_account.data_len()) {
+            <span style=color:#66d9ef>return</span> Err(EscrowError::NotRentExempt.into());
+        }
+
+        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> escrow_info <span style=color:#f92672>=</span> Escrow::unpack_unchecked(<span style=color:#f92672>&amp;</span>escrow_account.try_borrow_data()<span style=color:#f92672>?</span>)<span style=color:#f92672>?</span>;
+        <span style=color:#66d9ef>if</span> escrow_info.is_initialized() {
+            <span style=color:#66d9ef>return</span> Err(ProgramError::AccountAlreadyInitialized);
+        }
+
+        escrow_info.expected_amount <span style=color:#f92672>=</span> amount;
+        Escrow::pack(escrow_info, <span style=color:#f92672>&amp;</span><span style=color:#66d9ef>mut</span> escrow_account.try_borrow_mut_data()<span style=color:#f92672>?</span>)<span style=color:#f92672>?</span>;
+        <span style=color:#66d9ef>let</span> (pda, _bump_seed) <span style=color:#f92672>=</span> Pubkey::find_program_address(<span style=color:#f92672>&amp;</span>[<span style=color:#e6db74>b&#34;escrow&#34;</span>], program_id);
+
+        <span style=color:#66d9ef>let</span> token_program <span style=color:#f92672>=</span> next_account_info(account_info_iter)<span style=color:#f92672>?</span>;
+        <span style=color:#66d9ef>let</span> owner_change_ix <span style=color:#f92672>=</span> spl_token::instruction::set_authority(
+            token_program.key,
+            temp_token_account.key,
+            Some(<span style=color:#f92672>&amp;</span>pda),
+            AuthorityType::AccountOwner,
+            initializer.key,
+            <span style=color:#f92672>&amp;</span>[<span style=color:#f92672>&amp;</span>initializer.key],
+        )<span style=color:#f92672>?</span>;
+
+        invoke(
+            <span style=color:#f92672>&amp;</span>owner_change_ix,
+            <span style=color:#f92672>&amp;</span>[
+                temp_token_account.clone(),
+                initializer.clone(),
+                token_program.clone(),
+            ],
+        )<span style=color:#f92672>?</span>;
+
+        Ok(())
+    }
+</code></pre></div><p><code>rent</code>sysvar出现在了process的过程中.</p>
+<blockquote>
+<p>Rent is deducted from an account&rsquo;s balance according to their space requirements (i.e. the space an account and its fields take up in memory) regularly. An account can, however, be made rent-exempt if its balance is higher than some threshold that depends on the space it&rsquo;s consuming</p>
+</blockquote>
+<p>Alice转账过程中开了个账户,在租金上不是免租的,她以此向Bob发起了交易. Bob当时没有收取,十年后,Alice向Bob发送的1000个X token现在能换十个亿了,Bob想起来自己有个暴富的机会决定去收取,但是账户因为租金不是免租的,被solana系统干掉了.<br>
+这合理吗?这不合理.<br>
+更何况,现在租金几乎是两到三天一收(epoch),如果不是免租的,很快就会这样意外的burn掉了token,这是不可预期的错误行为. 所以为了交易的安全,alice必须向这个账户存够能让其免租的sol/lamports.</p>
+<p>最后记得</p>
+<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-toml data-lang=toml>[<span style=color:#a6e22e>dependencies</span>]
+<span style=color:#a6e22e>solana-program</span> = <span style=color:#e6db74>&#34;1.9.4&#34;</span>
+<span style=color:#a6e22e>spl-token</span> = {<span style=color:#a6e22e>version</span> = <span style=color:#e6db74>&#34;3.2.0&#34;</span>, <span style=color:#a6e22e>features</span> = [<span style=color:#e6db74>&#34;no-entrypoint&#34;</span>]}
+</code></pre></div><h3 id=errorrs>error.rs<a hidden class=anchor aria-hidden=true href=#errorrs>#</a></h3>
+<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-toml data-lang=toml>...
+[<span style=color:#a6e22e>dependencies</span>]
+<span style=color:#a6e22e>solana-program</span> = <span style=color:#e6db74>&#34;1.9.4&#34;</span>
+<span style=color:#a6e22e>spl-token</span> = {<span style=color:#a6e22e>version</span> = <span style=color:#e6db74>&#34;3.2.0&#34;</span>, <span style=color:#a6e22e>features</span> = [<span style=color:#e6db74>&#34;no-entrypoint&#34;</span>]}
+<span style=color:#a6e22e>thiserror</span> = <span style=color:#e6db74>&#34;1.0.24&#34;</span>
+</code></pre></div><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rs data-lang=rs><span style=color:#75715e>// inside error.rs
+</span><span style=color:#75715e></span><span style=color:#66d9ef>use</span> thiserror::Error;
+
+<span style=color:#66d9ef>use</span> solana_program::program_error::ProgramError;
+
+<span style=color:#75715e>#[derive(Error, Debug, Copy, Clone)]</span>
+<span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>enum</span> <span style=color:#a6e22e>EscrowError</span> {
+    <span style=color:#e6db74>/// Invalid instruction
+</span><span style=color:#e6db74></span>    <span style=color:#75715e>#[error(</span><span style=color:#e6db74>&#34;Invalid Instruction&#34;</span><span style=color:#75715e>)]</span>
+    InvalidInstruction,
+}
+
+<span style=color:#66d9ef>impl</span> From<span style=color:#f92672>&lt;</span>EscrowError<span style=color:#f92672>&gt;</span> <span style=color:#66d9ef>for</span> ProgramError {
+    <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>from</span>(e: <span style=color:#a6e22e>EscrowError</span>) -&gt; <span style=color:#a6e22e>Self</span> {
+        ProgramError::Custom(e <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>u32</span>)
+    }
+}
+</code></pre></div><h3 id=staters>state.rs<a hidden class=anchor aria-hidden=true href=#staters>#</a></h3>
+<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rs data-lang=rs><span style=color:#66d9ef>use</span> solana_program::pubkey::Pubkey;
+
+<span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>struct</span> <span style=color:#a6e22e>Escrow</span> {
+    <span style=color:#66d9ef>pub</span> is_initialized: <span style=color:#66d9ef>bool</span>,
+    <span style=color:#66d9ef>pub</span> initializer_pubkey: <span style=color:#a6e22e>Pubkey</span>,
+    <span style=color:#66d9ef>pub</span> temp_token_account_pubkey: <span style=color:#a6e22e>Pubkey</span>,
+    <span style=color:#66d9ef>pub</span> initializer_token_to_receive_account_pubkey: <span style=color:#a6e22e>Pubkey</span>,
+    <span style=color:#66d9ef>pub</span> expected_amount: <span style=color:#66d9ef>u64</span>,
+}
+</code></pre></div><h3 id=cpis>CPIs<a hidden class=anchor aria-hidden=true href=#cpis>#</a></h3>
+<h3 id=program-derived-address-pdas>Program Derived Address PDAs<a hidden class=anchor aria-hidden=true href=#program-derived-address-pdas>#</a></h3>
+<h2 id=bobs-transaction>Bob‘s Transaction<a hidden class=anchor aria-hidden=true href=#bobs-transaction>#</a></h2>
+<h2 id=anchor>Anchor<a hidden class=anchor aria-hidden=true href=#anchor>#</a></h2>
+<p>走完上面的流程,是不是感受到了粗陋和繁琐?<br>
+传输数据用的是最基本的Accounts数组/u8数组,为了拿到数据,我们要通过计算数据的长度,一个个取出来并强壮,这看起来并不像是现代人会干的事情.<br>
+所以这里介绍一下Anchor,其将之前繁琐步骤中不断重复的绝大多数都用宏做了化简,来降低我们可怜的1500ml左右的的脑浆上的心智负担.</p>
+<h3 id=anchor-install>Anchor install<a hidden class=anchor aria-hidden=true href=#anchor-install>#</a></h3>
+<h3 id=heading><a hidden class=anchor aria-hidden=true href=#heading>#</a></h3>
+<h2 id=参考>参考<a hidden class=anchor aria-hidden=true href=#参考>#</a></h2>
+<ol>
+<li><a href=https://paulx.dev/blog/2021/01/14/programming-on-solana-an-introduction/#processor-part-2-pdas-part-2-cpis-part-1>Programming on Solana - An Introduction</a></li>
+</ol>
+</div>
+<footer class=post-footer>
+<ul class=post-tags>
+</ul>
+<nav class=paginav>
+<a class=prev href=https://blog.explosion.zip/posts/telepresence%E8%B8%A9%E5%9D%91/>
+<span class=title>« Prev</span>
+<br>
+<span>Telepresence踩坑</span>
+</a>
+<a class=next href=https://blog.explosion.zip/posts/rust-pin-unpin/>
+<span class=title>Next »</span>
+<br>
+<span>Rust Pin Unpin</span>
+</a>
+</nav>
+<div class=share-buttons>
+<a target=_blank rel="noopener noreferrer" aria-label="share Solana合约开发指北 on twitter" href="https://twitter.com/intent/tweet/?text=Solana%e5%90%88%e7%ba%a6%e5%bc%80%e5%8f%91%e6%8c%87%e5%8c%97&url=https%3a%2f%2fblog.explosion.zip%2fposts%2fsolana%25E5%2590%2588%25E7%25BA%25A6%25E5%25BC%2580%25E5%258F%2591%25E6%258C%2587%25E5%258C%2597%2f&hashtags="><svg viewBox="0 0 512 512" height="30" width="30" fill="currentcolor"><path d="M449.446.0C483.971.0 512 28.03 512 62.554v386.892C512 483.97 483.97 512 449.446 512H62.554c-34.524.0-62.554-28.03-62.554-62.554V62.554c0-34.524 28.029-62.554 62.554-62.554h386.892zM195.519 424.544c135.939.0 210.268-112.643 210.268-210.268.0-3.218.0-6.437-.153-9.502 14.406-10.421 26.973-23.448 36.935-38.314-13.18 5.824-27.433 9.809-42.452 11.648 15.326-9.196 26.973-23.602 32.49-40.92-14.252 8.429-30.038 14.56-46.896 17.931-13.487-14.406-32.644-23.295-53.946-23.295-40.767.0-73.87 33.104-73.87 73.87.0 5.824.613 11.494 1.992 16.858-61.456-3.065-115.862-32.49-152.337-77.241-6.284 10.881-9.962 23.601-9.962 37.088.0 25.594 13.027 48.276 32.95 61.456-12.107-.307-23.448-3.678-33.41-9.196v.92c0 35.862 25.441 65.594 59.311 72.49-6.13 1.686-12.72 2.606-19.464 2.606-4.751.0-9.348-.46-13.946-1.38 9.349 29.426 36.628 50.728 68.965 51.341-25.287 19.771-57.164 31.571-91.8 31.571-5.977.0-11.801-.306-17.625-1.073 32.337 21.15 71.264 33.41 112.95 33.41z"/></svg>
+</a>
+<a target=_blank rel="noopener noreferrer" aria-label="share Solana合约开发指北 on linkedin" href="https://www.linkedin.com/shareArticle?mini=true&url=https%3a%2f%2fblog.explosion.zip%2fposts%2fsolana%25E5%2590%2588%25E7%25BA%25A6%25E5%25BC%2580%25E5%258F%2591%25E6%258C%2587%25E5%258C%2597%2f&title=Solana%e5%90%88%e7%ba%a6%e5%bc%80%e5%8f%91%e6%8c%87%e5%8c%97&summary=Solana%e5%90%88%e7%ba%a6%e5%bc%80%e5%8f%91%e6%8c%87%e5%8c%97&source=https%3a%2f%2fblog.explosion.zip%2fposts%2fsolana%25E5%2590%2588%25E7%25BA%25A6%25E5%25BC%2580%25E5%258F%2591%25E6%258C%2587%25E5%258C%2597%2f"><svg viewBox="0 0 512 512" height="30" width="30" fill="currentcolor"><path d="M449.446.0C483.971.0 512 28.03 512 62.554v386.892C512 483.97 483.97 512 449.446 512H62.554c-34.524.0-62.554-28.03-62.554-62.554V62.554c0-34.524 28.029-62.554 62.554-62.554h386.892zM160.461 423.278V197.561h-75.04v225.717h75.04zm270.539.0V293.839c0-69.333-37.018-101.586-86.381-101.586-39.804.0-57.634 21.891-67.617 37.266v-31.958h-75.021c.995 21.181.0 225.717.0 225.717h75.02V297.222c0-6.748.486-13.492 2.474-18.315 5.414-13.475 17.767-27.434 38.494-27.434 27.135.0 38.007 20.707 38.007 51.037v120.768H431zM123.448 88.722C97.774 88.722 81 105.601 81 127.724c0 21.658 16.264 39.002 41.455 39.002h.484c26.165.0 42.452-17.344 42.452-39.002-.485-22.092-16.241-38.954-41.943-39.002z"/></svg>
+</a>
+<a target=_blank rel="noopener noreferrer" aria-label="share Solana合约开发指北 on reddit" href="https://reddit.com/submit?url=https%3a%2f%2fblog.explosion.zip%2fposts%2fsolana%25E5%2590%2588%25E7%25BA%25A6%25E5%25BC%2580%25E5%258F%2591%25E6%258C%2587%25E5%258C%2597%2f&title=Solana%e5%90%88%e7%ba%a6%e5%bc%80%e5%8f%91%e6%8c%87%e5%8c%97"><svg viewBox="0 0 512 512" height="30" width="30" fill="currentcolor"><path d="M449.446.0C483.971.0 512 28.03 512 62.554v386.892C512 483.97 483.97 512 449.446 512H62.554c-34.524.0-62.554-28.03-62.554-62.554V62.554c0-34.524 28.029-62.554 62.554-62.554h386.892zM446 265.638c0-22.964-18.616-41.58-41.58-41.58-11.211.0-21.361 4.457-28.841 11.666-28.424-20.508-67.586-33.757-111.204-35.278l18.941-89.121 61.884 13.157c.756 15.734 13.642 28.29 29.56 28.29 16.407.0 29.706-13.299 29.706-29.701.0-16.403-13.299-29.702-29.706-29.702-11.666.0-21.657 6.792-26.515 16.578l-69.105-14.69c-1.922-.418-3.939-.042-5.585 1.036-1.658 1.073-2.811 2.761-3.224 4.686l-21.152 99.438c-44.258 1.228-84.046 14.494-112.837 35.232-7.468-7.164-17.589-11.591-28.757-11.591-22.965.0-41.585 18.616-41.585 41.58.0 16.896 10.095 31.41 24.568 37.918-.639 4.135-.99 8.328-.99 12.576.0 63.977 74.469 115.836 166.33 115.836s166.334-51.859 166.334-115.836c0-4.218-.347-8.387-.977-12.493 14.564-6.47 24.735-21.034 24.735-38.001zM326.526 373.831c-20.27 20.241-59.115 21.816-70.534 21.816-11.428.0-50.277-1.575-70.522-21.82-3.007-3.008-3.007-7.882.0-10.889 3.003-2.999 7.882-3.003 10.885.0 12.777 12.781 40.11 17.317 59.637 17.317 19.522.0 46.86-4.536 59.657-17.321 3.016-2.999 7.886-2.995 10.885.008 3.008 3.011 3.003 7.882-.008 10.889zm-5.23-48.781c-16.373.0-29.701-13.324-29.701-29.698.0-16.381 13.328-29.714 29.701-29.714 16.378.0 29.706 13.333 29.706 29.714.0 16.374-13.328 29.698-29.706 29.698zM160.91 295.348c0-16.381 13.328-29.71 29.714-29.71 16.369.0 29.689 13.329 29.689 29.71.0 16.373-13.32 29.693-29.689 29.693-16.386.0-29.714-13.32-29.714-29.693z"/></svg>
+</a>
+<a target=_blank rel="noopener noreferrer" aria-label="share Solana合约开发指北 on facebook" href="https://facebook.com/sharer/sharer.php?u=https%3a%2f%2fblog.explosion.zip%2fposts%2fsolana%25E5%2590%2588%25E7%25BA%25A6%25E5%25BC%2580%25E5%258F%2591%25E6%258C%2587%25E5%258C%2597%2f"><svg viewBox="0 0 512 512" height="30" width="30" fill="currentcolor"><path d="M449.446.0C483.971.0 512 28.03 512 62.554v386.892C512 483.97 483.97 512 449.446 512H342.978V319.085h66.6l12.672-82.621h-79.272v-53.617c0-22.603 11.073-44.636 46.58-44.636H425.6v-70.34s-32.71-5.582-63.982-5.582c-65.288.0-107.96 39.569-107.96 111.204v62.971h-72.573v82.621h72.573V512h-191.104c-34.524.0-62.554-28.03-62.554-62.554V62.554c0-34.524 28.029-62.554 62.554-62.554h386.892z"/></svg>
+</a>
+<a target=_blank rel="noopener noreferrer" aria-label="share Solana合约开发指北 on whatsapp" href="https://api.whatsapp.com/send?text=Solana%e5%90%88%e7%ba%a6%e5%bc%80%e5%8f%91%e6%8c%87%e5%8c%97%20-%20https%3a%2f%2fblog.explosion.zip%2fposts%2fsolana%25E5%2590%2588%25E7%25BA%25A6%25E5%25BC%2580%25E5%258F%2591%25E6%258C%2587%25E5%258C%2597%2f"><svg viewBox="0 0 512 512" height="30" width="30" fill="currentcolor"><path d="M449.446.0C483.971.0 512 28.03 512 62.554v386.892C512 483.97 483.97 512 449.446 512H62.554c-34.524.0-62.554-28.03-62.554-62.554V62.554c0-34.524 28.029-62.554 62.554-62.554h386.892zm-58.673 127.703c-33.842-33.881-78.847-52.548-126.798-52.568-98.799.0-179.21 80.405-179.249 179.234-.013 31.593 8.241 62.428 23.927 89.612l-25.429 92.884 95.021-24.925c26.181 14.28 55.659 21.807 85.658 21.816h.074c98.789.0 179.206-80.413 179.247-179.243.018-47.895-18.61-92.93-52.451-126.81zM263.976 403.485h-.06c-26.734-.01-52.954-7.193-75.828-20.767l-5.441-3.229-56.386 14.792 15.05-54.977-3.542-5.637c-14.913-23.72-22.791-51.136-22.779-79.287.033-82.142 66.867-148.971 149.046-148.971 39.793.014 77.199 15.531 105.329 43.692 28.128 28.16 43.609 65.592 43.594 105.4-.034 82.149-66.866 148.983-148.983 148.984zm81.721-111.581c-4.479-2.242-26.499-13.075-30.604-14.571-4.105-1.495-7.091-2.241-10.077 2.241-2.986 4.483-11.569 14.572-14.182 17.562-2.612 2.988-5.225 3.364-9.703 1.12-4.479-2.241-18.91-6.97-36.017-22.23C231.8 264.15 222.81 249.484 220.198 245s-.279-6.908 1.963-9.14c2.016-2.007 4.48-5.232 6.719-7.847 2.24-2.615 2.986-4.484 4.479-7.472 1.493-2.99.747-5.604-.374-7.846-1.119-2.241-10.077-24.288-13.809-33.256-3.635-8.733-7.327-7.55-10.077-7.688-2.609-.13-5.598-.158-8.583-.158-2.986.0-7.839 1.121-11.944 5.604-4.105 4.484-15.675 15.32-15.675 37.364.0 22.046 16.048 43.342 18.287 46.332 2.24 2.99 31.582 48.227 76.511 67.627 10.685 4.615 19.028 7.371 25.533 9.434 10.728 3.41 20.492 2.929 28.209 1.775 8.605-1.285 26.499-10.833 30.231-21.295 3.732-10.464 3.732-19.431 2.612-21.298-1.119-1.869-4.105-2.99-8.583-5.232z"/></svg>
+</a>
+<a target=_blank rel="noopener noreferrer" aria-label="share Solana合约开发指北 on telegram" href="https://telegram.me/share/url?text=Solana%e5%90%88%e7%ba%a6%e5%bc%80%e5%8f%91%e6%8c%87%e5%8c%97&url=https%3a%2f%2fblog.explosion.zip%2fposts%2fsolana%25E5%2590%2588%25E7%25BA%25A6%25E5%25BC%2580%25E5%258F%2591%25E6%258C%2587%25E5%258C%2597%2f"><svg viewBox="2 2 28 28" height="30" width="30" fill="currentcolor"><path d="M26.49 29.86H5.5a3.37 3.37.0 01-2.47-1 3.35 3.35.0 01-1-2.47V5.48A3.36 3.36.0 013 3 3.37 3.37.0 015.5 2h21A3.38 3.38.0 0129 3a3.36 3.36.0 011 2.46V26.37a3.35 3.35.0 01-1 2.47 3.38 3.38.0 01-2.51 1.02zm-5.38-6.71a.79.79.0 00.85-.66L24.73 9.24a.55.55.0 00-.18-.46.62.62.0 00-.41-.17q-.08.0-16.53 6.11a.59.59.0 00-.41.59.57.57.0 00.43.52l4 1.24 1.61 4.83a.62.62.0 00.63.43.56.56.0 00.4-.17L16.54 20l4.09 3A.9.9.0 0021.11 23.15zM13.8 20.71l-1.21-4q8.72-5.55 8.78-5.55c.15.0.23.0.23.16a.18.18.0 010 .06s-2.51 2.3-7.52 6.8z"/></svg>
+</a>
+</div>
+</footer>
+</article>
+</main>
+<footer class=footer>
+<span>&copy; 2024 <a href=https://blog.explosion.zip/>笔记</a></span>
+<span>
+Powered by
+<a href=https://gohugo.io/ rel="noopener noreferrer" target=_blank>Hugo</a> &
+        <a href=https://github.com/adityatelange/hugo-PaperMod/ rel=noopener target=_blank>PaperMod</a>
+</span>
+</footer>
+<a href=#top aria-label="go to top" title="Go to Top (Alt + G)" class=top-link id=top-link accesskey=g><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentcolor"><path d="M12 6H0l6-6z"/></svg>
+</a>
+<script>let menu=document.getElementById('menu');menu&&(menu.scrollLeft=localStorage.getItem("menu-scroll-position"),menu.onscroll=function(){localStorage.setItem("menu-scroll-position",menu.scrollLeft)}),document.querySelectorAll('a[href^="#"]').forEach(a=>{a.addEventListener("click",function(b){b.preventDefault();var a=this.getAttribute("href").substr(1);window.matchMedia('(prefers-reduced-motion: reduce)').matches?document.querySelector(`[id='${decodeURIComponent(a)}']`).scrollIntoView():document.querySelector(`[id='${decodeURIComponent(a)}']`).scrollIntoView({behavior:"smooth"}),a==="top"?history.replaceState(null,null," "):history.pushState(null,null,`#${a}`)})})</script>
+<script>var mybutton=document.getElementById("top-link");window.onscroll=function(){document.body.scrollTop>800||document.documentElement.scrollTop>800?(mybutton.style.visibility="visible",mybutton.style.opacity="1"):(mybutton.style.visibility="hidden",mybutton.style.opacity="0")}</script>
+<script>document.getElementById("theme-toggle").addEventListener("click",()=>{document.body.className.includes("dark")?(document.body.classList.remove('dark'),localStorage.setItem("pref-theme",'light')):(document.body.classList.add('dark'),localStorage.setItem("pref-theme",'dark'))})</script>
+</body>
+</html>

@@ -82,6 +82,28 @@ troublneshooting 无法建立和k8s内容器的链接/dns解析容器内部域�
 </article>
 <article class=post-entry>
 <header class=entry-header>
+<h2>Solana合约开发指北
+</h2>
+</header>
+<div class=entry-content>
+<p>Solana合约开发指北 这里假定solana需要的开发环境: rust/node.js甚至Solana客户端都已经装好了.
+合约是什么?简单来说,就是在提供多个函数rpc调用后,用户输入符合特定需求的结构体数据后,获得预期的结果或者符合规则的错误.同时提供在可接受的复杂度范围内,存储少量有关用户的元数据.
+On Solana, smart contracts are called programs
+首先,先确定solana的相关术语.为了符合官方的称谓,solana上的智能合约都被称作programs而非smart contracts.
+随后,我们预想一个智能能合约案例,来展开描述在solana上开发智能合约要处理哪些细节.
+Example Escrow Alice持有token X, Bob持有token Y,他们互相之间达成了交易约定: Alice 支付100X,和Bob手里50Y进行兑换.和我们购物使用淘宝一样,Alice和Bob都害怕交钱不发,所以需要一个能充当支付宝的智能合作作为一个可信赖的第三方托管,这就是我们案例: Escrow.
+直观的去想,让Alice发起交易的时候转账给合约就行,让Bob后续去找合约拿钱.但这是传统支付宝的做法:支付宝拥有一个巨大的数据库,可以通过键值的方式记录下不同数以亿计的用户的交易对.在solana上,智能合约的数据存储是通过account来实现的,而每一个account最多只能提供32KB的数据存储,无法存储跟合约无关的用户数据.
+solana并不是没有预见到这点,其提供的PDA(程序委托账户)能代我们做到记录无限的数据账户–当用户与合约交易时,为其生成专属的account来存储交易细节.当Alice和智能合约互动的时候, 智能合约通过确定的种子生成一个PDA账户来处理这笔交易.
+graph LR: Alice -> 让我们展开,一点点的捋下实现细节.
+Setting up the project 我们可以参照这个案例创建一个rust的项目,我们修改Cargo.toml,让其知道我们需要的依赖和编译结果产出.
+[package] name = "solana-escrow" version = "0.1.0" edition = "2021" license = "WTFPL" publish = false [dependencies] solana-program = "1.9.4" [lib] crate-type = ["cdylib", "lib"] entrypoint.rs, program, and accounts 现在我们已经在着手编写这个智能合约了!如我们所见,最后编译成eBPF的程序,入口处在lib.rs中,我们通过use来引入任何被导入的函数,通过entrypoint!这个宏来定义process_instruction函数.这是唯一调用智能合约的方法,所有的合约调用都是通过entrypoint来触发.
+被调用的时候, program被传递给BPF Loader....</p>
+</div>
+<footer class=entry-footer><span title="2022-08-30 13:22:27 +0800 +0800">August 30, 2022</span>&nbsp;·&nbsp;5 min&nbsp;·&nbsp;Me</footer>
+<a class=entry-link aria-label="post link to Solana合约开发指北" href=https://blog.explosion.zip/posts/solana%E5%90%88%E7%BA%A6%E5%BC%80%E5%8F%91%E6%8C%87%E5%8C%97/></a>
+</article>
+<article class=post-entry>
+<header class=entry-header>
 <h2>Rust Pin Unpin
 </h2>
 </header>
@@ -119,19 +141,12 @@ Pin概念解析 rust rfc 2349 The Why, What, and How of Pinning in Rust //需要
 <footer class=entry-footer>0 min&nbsp;·&nbsp;Me</footer>
 <a class=entry-link aria-label="post link to " href=https://blog.explosion.zip/posts/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0%E7%BB%BC%E8%BF%B0/></a>
 </article>
-<article class=post-entry>
-<header class=entry-header>
-<h2>APFS开启透明压缩
-</h2>
-</header>
-<div class=entry-content>
-<p>brew install afsctool afsctool -c -j8 **** #要压缩的目录 j是开启几个线程,m系列乞丐u就是4大4小,所以选了8. 我压缩的用户空间,主要是代码,干掉了10个g.
-https://apple.stackexchange.com/questions/360120/apfs-how-do-i-enable-transparent-compression
-感谢土豆!</p>
-</div>
-<footer class=entry-footer>1 min&nbsp;·&nbsp;Me</footer>
-<a class=entry-link aria-label="post link to APFS开启透明压缩" href=https://blog.explosion.zip/posts/apfs%E5%BC%80%E5%90%AF%E9%80%8F%E6%98%8E%E5%8E%8B%E7%BC%A9/></a>
-</article>
+<footer class=page-footer>
+<nav class=pagination>
+<a class=next href=https://blog.explosion.zip/posts/page/2/>Next&nbsp;&nbsp;»
+</a>
+</nav>
+</footer>
 </main>
 <footer class=footer>
 <span>&copy; 2024 <a href=https://blog.explosion.zip/>笔记</a></span>
